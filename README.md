@@ -65,11 +65,11 @@ Los siguientes incrementos incorporarán categorías, productos, existencias, mo
 | Integrante | Rol | Responsabilidad general |
 |---|---|---|
 | **Romel** | Jefe del proyecto y líder de backend | Coordina al equipo, planifica las fases y organiza los milestones e issues. Define la arquitectura del backend y revisa sus cambios. |
-| **Diego** | Desarrollador backend | Implementa y verifica funcionalidades de la API, la lógica de negocio y los cambios en los modelos de datos. |
-| **Sebastián** | Desarrollador backend | Implementa y verifica funcionalidades de la API, la lógica de negocio y los cambios en los modelos de datos. |
+| **Diego** | Desarrollador backend y responsable de pruebas | Desarrolla funcionalidades en Django y coordina las pruebas de la API. Verifica los criterios de aceptación y registra en GitHub los errores reproducibles. |
+| **Sebastián** | Desarrollador backend y encargado del seguimiento de backend | Desarrolla funcionalidades en Django y revisa el avance de los issues del equipo. Identifica tareas bloqueadas o pendientes de revisión y comunica su estado a Romel. |
 | **Henry** | Líder de frontend | Define la estructura de React, coordina las convenciones del equipo de frontend y revisa los cambios de su área. |
-| **Kelvin** | Desarrollador frontend | Implementa y verifica pantallas, componentes e integración con la API. |
-| **Diana** | Desarrolladora frontend | Implementa y verifica pantallas, componentes e integración con la API. |
+| **Kelvin** | Desarrollador frontend y responsable de pruebas | Desarrolla pantallas y componentes en React y coordina las pruebas de la interfaz y su integración con la API. Verifica los criterios de aceptación y registra en GitHub los errores reproducibles. |
+| **Diana** | Desarrolladora frontend y encargada del seguimiento de frontend | Desarrolla pantallas y componentes en React y revisa el avance de los issues del equipo. Identifica tareas bloqueadas o pendientes de revisión y comunica su estado a Henry. |
 
 Romel y Henry coordinan el contrato de la API y las dependencias entre ambos equipos. Las tareas concretas se asignan mediante los issues de cada fase.
 
