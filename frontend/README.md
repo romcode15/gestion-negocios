@@ -1,5 +1,7 @@
 # React + TypeScript + Vite
 
+La organización del proyecto, los responsables y la ubicación de cada archivo se describen en [Estructura de desarrollo](ESTRUCTURA.md). Consultar también la [guía de fase 1](fase1.md) antes de implementar un issue. El resto de este archivo corresponde a la plantilla inicial de Vite.
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:

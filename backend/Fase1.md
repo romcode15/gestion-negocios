@@ -1,5 +1,7 @@
 ## Fase 1 · Backend — Usuarios, negocios, roles y membresías
 
+La ubicación de los módulos, sus responsables y la composición de rutas se describen en [Estructura de desarrollo](ESTRUCTURA.md). Usar esa distribución al implementar los issues de esta fase.
+
 ### Objetivo
 
 Implementar con Django REST Framework y PostgreSQL el flujo en el que el
