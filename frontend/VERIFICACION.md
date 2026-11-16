@@ -39,3 +39,15 @@ Vincular el número real del issue, adjuntar resultados de lint/build y los esce
 - `npm.cmd run build`: correcto, TypeScript y Vite compilan (24 módulos).
 - `node verificar-componentes.mjs`: correcto. Comprueba render SSR de botón normal/pending, asociación etiqueta/campo/errores, carga, vacío, error y falta de acceso. No prueba eventos de teclado ni apariencia visual.
 - Revisión manual de navegador y Django/PostgreSQL: pendientes.
+
+## Capa de datos intercambiable
+
+Guía de firmas, configuración y escenarios en [API.md](API.md).
+
+Comprobaciones ejecutadas para esta issue:
+
+- `npm.cmd run test:api`: correcto. Servicios simulados y cliente HTTP con fetch sustituido; incluye selección de modo, rutas y payloads de cada módulo.
+- `npm.cmd run lint`: correcto.
+- `npm.cmd run build`: correcto.
+
+No se implementaron pantallas en esta issue. No se comprobó integración contra Django/PostgreSQL. La revisión e integración de #11 en dev siguen siendo una dependencia del PR, cuyo desarrollo continúa por autorización del equipo.
