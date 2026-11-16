@@ -70,15 +70,17 @@ Cada operación recibe el ID de negocio explícitamente. El mock valida permisos
 
 Todo vive en memoria del módulo: datos, sesión, token y credenciales ficticias. Las altas y cambios se reflejan en siguientes consultas mientras la aplicación siga cargada. Al recargar, reiniciar Vite o llamar reiniciarMocks se restaura la semilla y se cierra la sesión. No se usa localStorage, sessionStorage, IndexedDB ni cookies para guardar contraseñas. Las cuentas creadas durante la ejecución también desaparecen al reiniciar.
 
-Cuentas ficticias, todas con contraseña **Demo-12345!**:
+### Usuarios y contraseñas de prueba
 
-| Username | Escenario |
-| --- | --- |
-| plataforma | Permisos de plataforma; sin membresías iniciales |
-| admin_tienda | Administrador de Tienda Central, ID 1 |
-| admin_ferreteria | Administrador de Ferretería Norte, ID 2 |
-| compartido | Consulta en tienda; sin permisos en ferretería |
-| existente | Cuenta activa sin membresías iniciales |
+Estas cuentas solo funcionan con `VITE_API_MODE=mock`; no son cuentas de Django/PostgreSQL.
+
+| Usuario | Contraseña | Acceso |
+| --- | --- | --- |
+| `plataforma` | `Demo-12345!` | Administración de plataforma; sin negocios asignados |
+| `admin_tienda` | `Demo-12345!` | Administrador de Tienda Central, ID 1 |
+| `admin_ferreteria` | `Demo-12345!` | Administrador de Ferretería Norte, ID 2 |
+| `compartido` | `Demo-12345!` | Consulta en tienda; sin permisos en ferretería |
+| `existente` | `Demo-12345!` | Cuenta activa sin negocios asignados |
 
 La contraseña es exclusivamente de demostración. El mock exige 8 caracteres al crear una cuenta; no reproduce todos los validadores de contraseñas de Django.
 
