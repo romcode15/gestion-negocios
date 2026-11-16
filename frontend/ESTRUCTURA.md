@@ -108,7 +108,7 @@ Los tipos del contrato y sus solicitudes están en los módulos propietarios ind
 
 ### Alcance pendiente
 
-`app/providers`, `mocks/data` y `mocks/services` se reservan para siguientes issues. No hay sesión, negocio activo, peticiones HTTP ni simulación funcional en esta base. Las páginas futuras consumirán funciones de su `features/<modulo>/api.ts`; estas delegarán al transporte común. Los estados de formulario son locales. La futura capa compartida deberá descartar respuestas de negocios anteriores.
+La capa de datos ya está disponible: funciones públicas en `features/<modulo>/api.ts`, selección central en `api/client.ts`, transporte HTTP en `api/http.ts` y servicios simulados en `mocks/services/transport.ts`. Las firmas, escenarios y límites se documentan en [API.md](API.md). Las pantallas y el provider de sesión/negocio activo siguen pendientes. Los formularios mantendrán estado local y usarán señales de cancelación al cambiar de contexto.
 
 ### Ejecución
 
