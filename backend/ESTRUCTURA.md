@@ -1,6 +1,6 @@
 # Estructura de desarrollo del backend
 
-Esta estructura define dónde implementar los siete issues de fase 1. Los paquetes nuevos son una base organizativa: todavía no contienen modelos de negocio, endpoints, autorización ni pruebas funcionales.
+Esta estructura define dónde implementar los siete issues de fase 1. El núcleo de modelos y preparación inicial de #4 se documenta en [MODELOS.md](MODELOS.md). Los paquetes HTTP siguen reservados para #5 y posteriores.
 
 Consultar [Fase1.md](Fase1.md), [README del proyecto](../README.md) y el [contrato frontend](../frontend/fase1.md). Las carpetas Python incluyen `__init__.py`; las migraciones nuevas se crean durante el desarrollo, sin editar la migración existente de Usuario.
 
@@ -35,7 +35,7 @@ backend/
     └── integration/         # Flujo completo; coordinación de Diego
 ```
 
-`negocios` y `accesos` incluyen AppConfig, pero todavía no están en INSTALLED_APPS. El issue #4 las registra cuando implemente los modelos y genere sus migraciones. No registrar `api/` como app de modelos ni mover Usuario a otra app.
+`negocios` y `accesos` están registradas en INSTALLED_APPS y contienen sus migraciones iniciales. No registrar `api/` como app de modelos ni mover Usuario a otra app.
 
 ## Archivos que se crean al implementar cada módulo
 
@@ -98,4 +98,4 @@ Desde backend, con el entorno configurado:
 .\.venv\Scripts\python.exe manage.py test
 ```
 
-Mientras las apps nuevas no estén registradas, estas comprobaciones no validan modelos aún inexistentes. La fase requiere además las pruebas reales y criterios de aceptación de cada issue.
+Para pruebas aisladas de modelos y migraciones sin modificar permisos de la base local, consultar tools/verificar_postgres.py y [MODELOS.md](MODELOS.md). La fase requiere además las pruebas y criterios de aceptación de cada issue.
