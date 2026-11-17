@@ -2,7 +2,7 @@
 
 Esta estructura define dónde implementar los siete issues de fase 1. El núcleo de modelos y preparación inicial de #4 se documenta en [MODELOS.md](MODELOS.md). La capa HTTP se desarrolla desde #5.
 
-La autenticación y las bases compartidas de #5 se describen en [API.md](API.md). Plataforma, roles y membresías mantienen sus URLs vacías hasta sus respectivas entregas.
+La autenticación y las bases compartidas de #5 se describen en [API.md](API.md), junto con la API de plataforma de #6. Roles y membresías mantienen sus URLs vacías hasta sus respectivas entregas.
 
 Consultar [Fase1.md](Fase1.md), [README del proyecto](../README.md) y el [contrato frontend](../frontend/fase1.md). Las carpetas Python incluyen `__init__.py`; las migraciones nuevas se crean durante el desarrollo, sin editar la migración existente de Usuario.
 
