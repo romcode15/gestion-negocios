@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     # Terceros y aplicaciones propias
     'rest_framework',
     'cuentas',
+    'negocios.apps.NegociosConfig',
+    'accesos.apps.AccesosConfig',
 ]
 
 MIDDLEWARE = [
