@@ -5,6 +5,8 @@ from django.views.decorators.cache import never_cache
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
+from api.common.schema import ErrorSerializer
 
 from .selectors import datos_sesion
 from .serializers import LoginSerializer, SesionSerializer, VacioSerializer
@@ -17,6 +19,7 @@ class CsrfView(GenericAPIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
+    @extend_schema(tags=["Autenticación"], summary="Obtener cookie CSRF", responses={204: None})
     def get(self, request):
         get_token(request)
         return Response(status=204)
@@ -29,6 +32,11 @@ class LoginView(GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = LoginSerializer
 
+    @extend_schema(
+        tags=["Autenticación"], summary="Iniciar sesión",
+        description="Obtener CSRF primero. Swagger envía X-CSRFToken automáticamente; la cookie rota al iniciar sesión.",
+        request=LoginSerializer, responses={200: SesionSerializer, 400: ErrorSerializer, 403: ErrorSerializer},
+    )
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -40,6 +48,8 @@ class LoginView(GenericAPIView):
 class MeView(GenericAPIView):
     serializer_class = SesionSerializer
 
+    @extend_schema(tags=["Autenticación"], summary="Consultar sesión actual",
+                   responses={200: SesionSerializer, 403: ErrorSerializer})
     def get(self, request):
         return Response(self.get_serializer(datos_sesion(request.user)).data)
 
@@ -47,6 +57,8 @@ class MeView(GenericAPIView):
 @method_decorator(never_cache, name="dispatch")
 class LogoutView(GenericAPIView):
     serializer_class = VacioSerializer
+    @extend_schema(tags=["Autenticación"], summary="Cerrar sesión", request=None,
+                   responses={204: None, 403: ErrorSerializer})
     def post(self, request):
         cerrar_sesion(request)
         return Response(status=204)
