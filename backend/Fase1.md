@@ -2,6 +2,8 @@
 
 La ubicación de los módulos, sus responsables y la composición de rutas se describen en [Estructura de desarrollo](ESTRUCTURA.md). Usar esa distribución al implementar los issues de esta fase.
 
+La base HTTP, los helpers de autorización y sus reglas de uso se documentan en [API y seguridad](API.md).
+
 ### Objetivo
 
 Implementar con Django REST Framework y PostgreSQL el flujo en el que el
@@ -78,6 +80,7 @@ transacción. Se valida `rol_id` en ambas modalidades.
   Solo se incluyen negocios y membresías activos.
 - Una lista devuelve `{ count, next, previous, results }`.
   `next` y `previous` son enlaces de paginación o `null`.
+  El tamaño inicial es 2 y el orden ascendente por `id`, alineados con la simulación de frontend.
 - `204` indica éxito con cuerpo vacío.
 
 Códigos base de permisos para esta entrega:
@@ -131,6 +134,9 @@ Ejemplo de validación:
 - Filtrar los querysets por el negocio validado y asignar el tenant en el
   servidor. Verificar la pertenencia de roles y membresías antes de guardar.
   Validar que quien crea un rol pueda delegar cada permiso seleccionado.
+- Solo se puede asignar un rol del mismo negocio cuyos permisos estén incluidos
+  en los del actor. Al cambiar roles, conservar al último Administrador de negocio
+  activo y comprobarlo bajo bloqueo dentro de la transacción de guardado.
 - Mantener la gestión de roles globales como capacidad prevista de la
   plataforma. El flujo mínimo de esta entrega utiliza el Superadministrador
   inicial y la creación de roles dentro de negocios.
