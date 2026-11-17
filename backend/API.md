@@ -1,6 +1,6 @@
 # Base de API y seguridad · Issue #5
 
-Esta entrega habilita autenticación y componentes comunes. Los endpoints de plataforma, roles y membresías se implementarán en #6 a #10; sus archivos urls.py ya están incluidos, con listas de rutas vacías.
+La base de #5 habilita autenticación y componentes comunes; #6 incorpora los endpoints de plataforma descritos al final. Roles y membresías se implementarán en #7 a #10; sus archivos urls.py ya están incluidos, con listas de rutas vacías.
 
 ## Autenticación
 
@@ -155,3 +155,57 @@ Desde backend:
 ```
 
 El script aplica las migraciones desde cero, verifica check y ausencia de migraciones pendientes y ejecuta toda la suite, sin modificar la base habitual. La prueba del proxy comprueba cookies, host y Origin en el cliente HTTP de Django; la integración visual desde React se validará en su entrega de integración.
+
+## API de plataforma · Issue #6
+
+| Método y ruta bajo /api/v1 | Permiso global | Entrada | Respuesta |
+|---|---|---|---|
+| GET /plataforma/usuarios/ | listar_usuarios | page opcional | 200, Pagina de Usuario. |
+| POST /plataforma/usuarios/ | crear_usuario | username, password | 201, Usuario. |
+| GET /plataforma/negocios/ | listar_negocios | page opcional | 200, Pagina de Negocio. |
+| POST /plataforma/negocios/ | crear_negocio | nombre, tipo, administrador_id | 201, Negocio. |
+
+Usuario contiene id, username e is_active. Negocio contiene id, nombre, tipo y activo. Las listas mantienen el orden por id y páginas de dos registros. Los listados de plataforma incluyen registros activos e inactivos; la selección de administrador debe usar únicamente cuentas activas.
+
+Las vistas ListCreateAPIView reutilizan TienePermisoGlobal y la base de sesiones/CSRF. El permiso de alta no requiere el de listado ni viceversa. El administrador de un negocio no obtiene por ello acceso a plataforma. Las rutas no incluyen detalle, edición ni eliminación.
+
+### Creación de cuentas
+
+El serializer declara username y password como entrada; password es write_only. La respuesta reutiliza UsuarioSerializer y nunca contiene contraseña ni hash.
+
+El servicio crear_usuario valida los campos del modelo y normaliza username con Django. Aplica validate_password usando la cuenta candidata para comprobar también similitud con username, y guarda mediante create_user. No concede is_staff/is_superuser ni asignaciones globales o membresías.
+
+Los errores se devuelven por username o password con validation_error. La restricción única resuelve también altas concurrentes: el error de duplicado se consulta después de salir del savepoint. Un IntegrityError inesperado no se convierte silenciosamente en un duplicado.
+
+### Alta de negocio
+
+Ejemplo de cuerpo (sustituir el ID por una cuenta activa existente):
+
+```json
+{ "nombre": "Tienda Central", "tipo": "tienda", "administrador_id": 12 }
+```
+
+nombre y tipo son textos requeridos, con máximos de 150 y 100 caracteres. administrador_id es numérico y debe identificar una cuenta activa existente. El alta no crea una cuenta ni cambia sus credenciales.
+
+El serializer valida los campos. El servicio crear_negocio vuelve a comprobar y bloquea la cuenta administradora dentro de transaction.atomic(), y guarda:
+
+1. El nuevo Negocio activo.
+2. Su rol predefinido Administrador de negocio y los cinco permisos de negocio, mediante preparar_administrador_negocio de #4.
+3. La Membresia activa entre esa cuenta, ese negocio y ese rol.
+
+Si falla cualquiera de estos pasos, se revierte la operación completa, incluidas las asociaciones y los permisos de catálogo creados dentro de ella. El administrador inicial no recibe permisos de plataforma. La siguiente consulta auth/me refleja su membresía y permisos sin copiar datos obsoletos a la sesión.
+
+Las entradas de alta solo controlan sus campos declarados: no pueden configurar IDs, flags administrativos, el estado inicial ni roles arbitrarios mediante campos adicionales.
+
+### Archivos e imports para el equipo
+
+- api/plataforma/views.py: UsuariosView y NegociosView.
+- api/plataforma/serializers.py: entradas de creación y representación NegocioSerializer; UsuarioSerializer procede de api/common/.
+- api/plataforma/services.py: crear_usuario(username, password) y crear_negocio(nombre, tipo, administrador_id). Los servicios son internos: las vistas comprueban los permisos antes de llamarlos.
+- api/plataforma/urls.py: únicamente usuarios/ y negocios/. No se modifica la composición raíz ni las URLs de los compañeros.
+
+Para probar manualmente el flujo: preparar catálogo y cuenta de plataforma según MODELOS.md, obtener CSRF, iniciar sesión, crear o elegir una cuenta activa, crear una tienda y una ferretería con esa cuenta como administrador, y consultar sus listados. Después iniciar otra sesión con las credenciales del administrador y comprobar sus dos negocios y permisos en auth/me. Cambiar de cuenta requiere volver a leer el token rotado tras cada login.
+
+Para pruebas automatizadas independientes, Sebastián y Diego usan crear_contexto_negocio o crear_dos_negocios de tests/support/factories.py. Esas fábricas preparan modelos directamente en la base de pruebas y no dependen de estos endpoints ni de los de otro compañero.
+
+La suite en api/plataforma/tests/test_platform.py verifica creación, lectura paginada, permisos independientes, validación de campos, CSRF, ausencia de hashes, inicialización de dos negocios, revalidación del administrador y rollback. Comprueba además un duplicado concurrente con conexiones reales separadas. La integración visual de estas operaciones desde React sigue correspondiendo a su entrega de integración.
