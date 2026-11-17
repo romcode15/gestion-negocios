@@ -4,6 +4,8 @@ La ubicación de los módulos, sus responsables y la composición de rutas se de
 
 La base HTTP, los helpers de autorización y sus reglas de uso se documentan en [API y seguridad](API.md).
 
+Swagger UI está configurado para todo el backend. Consultar [README backend](README.md) para probar operaciones y documentar nuevos endpoints; cada issue debe mantener el esquema y comprobar los casos aplicables sin repetir la configuración.
+
 ### Objetivo
 
 Implementar con Django REST Framework y PostgreSQL el flujo en el que el

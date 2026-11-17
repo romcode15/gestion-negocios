@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Terceros y aplicaciones propias
     'rest_framework',
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
     'cuentas',
     'negocios.apps.NegociosConfig',
     'accesos.apps.AccesosConfig',
@@ -65,7 +67,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -99,12 +101,28 @@ AUTH_USER_MODEL = "cuentas.Usuario"
 CSRF_FAILURE_VIEW = "api.common.errors.csrf_failure"
 
 REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": ["api.common.authentication.AutenticacionSesion"],
     "DEFAULT_PERMISSION_CLASSES": ["api.common.permissions.UsuarioActivo"],
     "DEFAULT_PAGINATION_CLASS": "api.common.pagination.PaginacionPagina",
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "api.common.errors.manejar_excepcion",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Gestión de Negocios · API",
+    "DESCRIPTION": "API de fase 1. Usar csrf → login → operaciones → logout. Las escrituras usan sesiones y CSRF.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": False,
+        "displayRequestDuration": True,
+    },
 }
 
 
