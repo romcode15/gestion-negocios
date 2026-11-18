@@ -6,6 +6,7 @@ import type { Pagina } from '../../../api/types'
 import { AccessDenied, EmptyState } from '../../../components/feedback/Feedback'
 import { PaginatedTable } from '../../../components/ui/PaginatedTable'
 import { usePermisosDelegables } from '../components/usePermisosDelegables'
+import { CrearRolForm } from '../components/CrearRolForm'
 import { listarRoles } from '../api'
 import type { Rol } from '../types'
 
@@ -13,6 +14,7 @@ export function RolesPage() {
   const { negocioId } = useSesion()
   const puedeListar = usePermiso('listar_roles')
   const puedeCrear = usePermiso('crear_rol')
+  const [refresco, setRefresco] = useState(0)
 
   return (
     <section>
@@ -21,11 +23,16 @@ export function RolesPage() {
         <EmptyState title="Sin negocio activo">Selecciona un negocio para ver sus roles.</EmptyState>
       ) : !puedeListar ? (
         <AccessDenied />
-      ) : puedeCrear ? (
-        // key={negocioId}: al cambiar de negocio se reinicia todo
-        <RolesConNombres key={negocioId} />
       ) : (
-        <TablaRoles key={negocioId} nombres={null} />
+        // key={negocioId}: al cambiar de negocio se borra el formulario, las opciones y los errores
+        <div key={negocioId}>
+          {puedeCrear && <CrearRolForm onCreado={() => setRefresco((n) => n + 1)} />}
+          {puedeCrear ? (
+            <RolesConNombres key={refresco} />
+          ) : (
+            <TablaRoles key={refresco} nombres={null} />
+          )}
+        </div>
       )}
     </section>
   )
