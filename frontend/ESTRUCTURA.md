@@ -1,6 +1,6 @@
 # Estructura de desarrollo del frontend
 
-Esta base incorpora tipos del contrato, componentes compartidos, layouts y entradas de páginas pendientes. La sesión, la simulación y las pantallas funcionales se implementarán en sus issues. Los `.gitkeep` conservan las carpetas reservadas.
+Esta estructura prepara el trabajo de fase 1. Las carpetas están vacías: la lógica y las pantallas se implementarán en sus issues. Los `.gitkeep` permiten versionar directorios vacíos y pueden retirarse cuando contengan código.
 
 Fuentes obligatorias: [fase 1 frontend](fase1.md), [fase 1 backend](../backend/Fase1.md) y [README del proyecto](../README.md).
 
@@ -90,28 +90,4 @@ npm.cmd run lint
 npm.cmd run build
 ```
 
-La pantalla de Vite fue sustituida por puntos de entrada pendientes. Las interfaces disponibles se describen a continuación.
-
-## Base compartida implementada
-
-Los tipos del contrato y sus solicitudes están en los módulos propietarios indicados arriba. `ApiError` y `Pagina<T>` se importan desde `src/api/types`. Los tipos de respuesta no incluyen contraseñas ni campos de solicitudes.
-
-### Interfaces de integración
-
-- `components/ui/Button`: props nativas de button, `pending` y `pendingLabel`. El tipo predeterminado es button: usar `type="submit"` para guardar. `pending` bloquea el control. El formulario debe además impedir envíos repetidos desde su manejador y bloquear sus campos mientras guarda.
-- `components/ui/TextField`: props nativas de input, `label`, `hint` y `errors: string[]`. Genera IDs únicos, vincula etiqueta y mensajes, y marca `aria-invalid`. Pasar `name`, `required` y `autoComplete` según el formulario. Tras validar, el formulario enfoca el primer campo inválido.
-- `components/feedback/Feedback`: `Loading`, `EmptyState`, `ErrorMessage` y `AccessDenied`. Los errores generales anuncian alertas; carga usa status. `AccessDenied` presenta el mensaje, sin implementar autorización.
-- `app/layouts/Layouts`: `LoginLayout`, `PlataformaLayout` y `NegocioLayout` reciben children; los paneles admiten navigation como ReactNode.
-- Cada módulo exporta su página desde `features/<modulo>/pages/index.tsx`: `AuthPage`, `NegociosPage`, `RolesPage` y `MembresiasPage`. Kelvin y Diana sustituyen el contenido de su página conservando esa exportación. No deben editar App.tsx, main.tsx ni app/routes.
-- Henry mantiene `app/routes/modules.ts`, el registro tipado `EntradaModulo` con id, label, path y Page. Las rutas actuales son `/`, `/plataforma`, `/negocio/roles` y `/negocio/membresias`. Son puntos de entrada pendientes, no flujos terminados. La navegación usa enlaces nativos; el servidor de producción deberá redirigir las rutas de la aplicación a index.html. Vite ya permite acceso directo en desarrollo.
-- Los futuros enlaces y comprobaciones de permisos se compondrán desde app/. Estas rutas todavía no tienen sesión ni protección. No muestran datos de negocio.
-
-### Alcance pendiente
-
-La capa de datos ya está disponible: funciones públicas en `features/<modulo>/api.ts`, selección central en `api/client.ts`, transporte HTTP en `api/http.ts` y servicios simulados en `mocks/services/transport.ts`. Las firmas, escenarios y límites se documentan en [API.md](API.md). Las pantallas y el provider de sesión/negocio activo siguen pendientes. Los formularios mantendrán estado local y usarán señales de cancelación al cambiar de contexto.
-
-### Ejecución
-
-Desde frontend: `npm.cmd ci`, `npm.cmd run dev`. Comprobaciones: `npm.cmd run lint` y `npm.cmd run build`. La guía de verificación se encuentra en [VERIFICACION.md](VERIFICACION.md).
-
-Esta sección sustituye las notas anteriores que describían todas las carpetas como vacías y la conservación de la pantalla de Vite. La estructura está versionada junto con el código; no necesita archivos del equipo de otro integrante.
+La pantalla actual de Vite se conserva hasta que los issues de implementación la sustituyan. Esta estructura no incorpora todavía navegación, tipos, servicios o simulación funcional.
