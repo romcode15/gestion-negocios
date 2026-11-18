@@ -24,8 +24,6 @@ En cada operación del negocio, Django valida que el negocio esté activo, que e
 
 ## Herramientas y arquitectura
 
-La guía para explorar y probar los endpoints con Swagger UI está en el [README del backend](backend/README.md).
-
 | Área | Herramientas |
 |---|---|
 | Frontend | React, TypeScript y Vite |
