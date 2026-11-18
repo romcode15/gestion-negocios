@@ -1,6 +1,8 @@
 # Estructura de desarrollo del backend
 
-Esta estructura define dónde implementar los siete issues de fase 1. Los paquetes nuevos son una base organizativa: todavía no contienen modelos de negocio, endpoints, autorización ni pruebas funcionales.
+Esta estructura define dónde implementar los siete issues de fase 1. El núcleo de modelos y preparación inicial de #4 se documenta en [MODELOS.md](MODELOS.md). La capa HTTP se desarrolla desde #5.
+
+La autenticación y las bases compartidas de #5 se describen en [API.md](API.md), junto con la API de plataforma de #6. Roles y membresías mantienen sus URLs vacías hasta sus respectivas entregas.
 
 Consultar [Fase1.md](Fase1.md), [README del proyecto](../README.md) y el [contrato frontend](../frontend/fase1.md). Las carpetas Python incluyen `__init__.py`; las migraciones nuevas se crean durante el desarrollo, sin editar la migración existente de Usuario.
 
@@ -35,7 +37,7 @@ backend/
     └── integration/         # Flujo completo; coordinación de Diego
 ```
 
-`negocios` y `accesos` incluyen AppConfig, pero todavía no están en INSTALLED_APPS. El issue #4 las registra cuando implemente los modelos y genere sus migraciones. No registrar `api/` como app de modelos ni mover Usuario a otra app.
+`negocios` y `accesos` están registradas en INSTALLED_APPS y contienen sus migraciones iniciales. No registrar `api/` como app de modelos ni mover Usuario a otra app.
 
 ## Archivos que se crean al implementar cada módulo
 
@@ -64,7 +66,7 @@ Romel concentra modelos, migraciones y componentes compartidos. Sebastián y Die
 
 ## Composición de rutas sin conflictos
 
-En #5, Romel crea `api/urls.py` y los `urls.py` de auth, plataforma, roles y membresias. Los módulos todavía no implementados tendrán `urlpatterns = []`. Conectar una sola vez desde config/urls.py bajo `/api/v1/`:
+En #5 se crean `api/urls.py` y los `urls.py` de auth, plataforma, roles y membresias. Los módulos todavía no implementados tienen `urlpatterns = []`. La composición desde config/urls.py bajo `/api/v1/` es:
 
 | Módulo | Prefijo que debe añadir la composición común |
 |---|---|
@@ -75,7 +77,7 @@ En #5, Romel crea `api/urls.py` y los `urls.py` de auth, plataforma, roles y mem
 
 Los dos últimos prefijos coinciden intencionalmente: roles define únicamente `permisos/` y `roles/`; membresias define `membresias/` y `membresias/<int:membresia_id>/`. Conservar barra final y evitar duplicar los prefijos en los archivos internos. No agregar capturas genéricas que absorban rutas del otro módulo.
 
-Después de integrar #5, cada autor completa solo su urls.py. No necesita editar la composición raíz al añadir sus endpoints. Esta estructura inicial todavía no cambia las URLs actuales de Django.
+Después de integrar #5, cada autor completa solo su urls.py. No necesita editar la composición raíz al añadir sus endpoints. Los cuatro endpoints de autenticación ya están definidos en esa entrega.
 
 ## Pruebas independientes y trabajo en paralelo
 
@@ -98,4 +100,4 @@ Desde backend, con el entorno configurado:
 .\.venv\Scripts\python.exe manage.py test
 ```
 
-Mientras las apps nuevas no estén registradas, estas comprobaciones no validan modelos aún inexistentes. La fase requiere además las pruebas reales y criterios de aceptación de cada issue.
+Para pruebas aisladas de modelos y migraciones sin modificar permisos de la base local, consultar tools/verificar_postgres.py y [MODELOS.md](MODELOS.md). La fase requiere además las pruebas y criterios de aceptación de cada issue.

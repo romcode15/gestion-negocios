@@ -24,3 +24,13 @@ nav { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
 .error { color: #8c192a; background: #fff0f1; border: 1px solid #d69aa3; }
 .skip-link { position: fixed; top: -10rem; left: 1rem; padding: .8rem; background: white; z-index: 10; }
 .skip-link:focus { top: 1rem; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.app-header { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.brand { font-size: 1.15rem; font-weight: 700; margin-right: auto; }
+.context-selector { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; margin-bottom: 1.5rem; }
+.context-selector label { font-weight: 600; }
+select { font: inherit; max-width: 100%; padding: .6rem; border: 1px solid #65788b; border-radius: .45rem; background: white; color: inherit; }
+nav a { padding: .35rem .6rem; border-radius: .3rem; }
+nav a[aria-current="page"] { background: #e4edf7; font-weight: 700; }
+form .error { margin-block: 1rem; }
+@media (max-width: 480px) { .app-header .brand { flex-basis: 100%; } }
