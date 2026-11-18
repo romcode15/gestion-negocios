@@ -112,6 +112,6 @@ La capa de datos ya está disponible: funciones públicas en `features/<modulo>/
 
 ### Ejecución
 
-Desde frontend: `npm.cmd ci`, `npm.cmd run dev`. Comprobaciones: `npm.cmd run lint` y `npm.cmd run build`. La guía de verificación se encuentra en [VERIFICACION.md](VERIFICACION.md).
+Desde frontend: `npm.cmd ci`, `npm.cmd run dev`. Comprobaciones: `npm.cmd test`, `npm.cmd run lint` y `npm.cmd run build`. Consultar configuración y escenarios en [API.md](API.md).
 
 Esta sección sustituye las notas anteriores que describían todas las carpetas como vacías y la conservación de la pantalla de Vite. La estructura está versionada junto con el código; no necesita archivos del equipo de otro integrante.

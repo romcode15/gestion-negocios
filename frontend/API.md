@@ -136,6 +136,6 @@ No necesita Django. La integración real, las políticas finales de contraseña/
 
 ## Pantallas de plataforma y membresías
 
-Las pantallas de #14 y #15 consumen estas firmas. Componentes compartidos y contratos de contexto: [COMPONENTES.md](COMPONENTES.md). Evidencia reproducible: PANEL_VERIFICACION.md y MEMBRESIAS_VERIFICACION.md. Ejecutar `npm.cmd test` para todas las comprobaciones.
+Las pantallas de #14 y #15 consumen estas firmas. Componentes compartidos y contratos de contexto: [COMPONENTES.md](COMPONENTES.md). Ejecutar `npm.cmd test` para todas las comprobaciones automatizadas; la revisión visual y la integración real con Django/PostgreSQL se verifican por separado.
 
 Para simular cuentas inactivas: `configurarMocks({ usuariosInactivos: [5] })` marca la cuenta existente como inactiva hasta `reiniciarMocks()`. No cambia el contrato público de la API ni agrega campos a respuestas.
