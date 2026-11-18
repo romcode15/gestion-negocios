@@ -8,6 +8,7 @@ import type { Membresia } from '../types'
 import { aSolicitudCambioRol, validarRol } from '../validacion'
 import type { EstadoRoles } from '../seleccion'
 import { SelectorRoles } from './SelectorRoles'
+import { useSesion } from '../../../app/providers/SessionContext'
 
 type Props = {
   membresia: Membresia
@@ -17,6 +18,7 @@ type Props = {
 }
 
 export function CambiarRolForm({ membresia, negocioId, estadoRoles, onActualizado }: Props) {
+  const { store } = useSesion()
   const [rolId, setRolId] = useState<number | null>(membresia.rol_id)
   const [errors, setErrors] = useState<string[]>([])
   const [error, setError] = useState<ApiException | null>(null)
@@ -28,7 +30,8 @@ export function CambiarRolForm({ membresia, negocioId, estadoRoles, onActualizad
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (enviando.current || negocioId === null) return
-    const locales = validarRol(rolId)
+    const locales = !estadoRoles.puedeListar || !(estadoRoles.catalogo ?? estadoRoles.opciones).some((rol) => rol.id === rolId && rol.negocio_id === negocioId)
+      ? ['Selecciona un rol autorizado del negocio activo.'] : validarRol(rolId)
     setErrors(locales)
     setError(null)
     setMensaje('')
@@ -39,7 +42,7 @@ export function CambiarRolForm({ membresia, negocioId, estadoRoles, onActualizad
     enviando.current = true
     setPending(true)
     try {
-      const actualizada = await cambiarRolMembresia(negocioId, membresia.id, aSolicitudCambioRol(rolId))
+      const actualizada = await store.enContexto(({ signal }) => cambiarRolMembresia(negocioId, membresia.id, aSolicitudCambioRol(rolId), { signal }))
       setRolId(actualizada.rol_id)
       setMensaje('Rol actualizado.')
       onActualizado(actualizada)
@@ -57,13 +60,13 @@ export function CambiarRolForm({ membresia, negocioId, estadoRoles, onActualizad
     }
   }
 
-  return <form ref={form} onSubmit={submit} noValidate aria-busy={pending}>
+  return <form ref={form} onSubmit={submit} noValidate aria-busy={pending} aria-label={'Cambiar rol de ' + membresia.usuario.username}>
     {error && <ApiFeedback error={error} />}
     {mensaje && <p role="status">{mensaje}</p>}
     <fieldset disabled={pending}>
       <SelectorRoles estado={estadoRoles} value={rolId}
         onSeleccionar={(rol) => setRolId(rol?.id ?? null)} errors={errors} disabled={pending} />
-      <Button type="submit" pending={pending} pendingLabel="Guardando…">Guardar rol</Button>
+      <Button type="submit" pending={pending} disabled={!estadoRoles.puedeListar || !(estadoRoles.catalogo ?? estadoRoles.opciones).length} pendingLabel="Guardando…">Guardar rol</Button>
     </fieldset>
   </form>
 }

@@ -4,6 +4,8 @@ import { modules } from '../routes/modules'
 import { puedeAcceder } from '../routes/access'
 import { AppLink } from '../routes/AppLink'
 import { Button } from '../../components/ui/Button'
+import { Navbar } from '../../components/ui/Navbar'
+import { Footer } from '../../components/ui/Footer'
 export function AppShell({ children }: { children: ReactNode }) {
   const { sesion, negocioId, pending, store } = useSesion()
   if (!sesion) return null
@@ -20,9 +22,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         {sesion.negocios.map((negocio) => <option key={negocio.id} value={negocio.id}>{negocio.nombre}</option>)}
       </select>
     </div>
-    <nav aria-label="Navegación principal"><AppLink href="/" aria-current={window.location.pathname === '/' ? 'page' : undefined}>Inicio</AppLink>
+    <Navbar><AppLink href="/" aria-current={window.location.pathname === '/' ? 'page' : undefined}>Inicio</AppLink>
       {available.map((entry) => <AppLink key={entry.id} href={entry.path} aria-current={window.location.pathname === entry.path ? 'page' : undefined}>{entry.label}</AppLink>)}
-    </nav>
+    </Navbar>
     <main id="contenido" className="card" tabIndex={-1}>{children}</main>
+    <Footer />
   </div>
 }

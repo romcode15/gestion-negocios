@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiException, isAbortError } from '../../../api/errors'
-import { usePermiso } from '../../../app/providers/SessionContext'
+import { usePermiso, useSesion } from '../../../app/providers/SessionContext'
 import { ApiFeedback } from '../../../components/feedback/ApiFeedback'
 import { Button } from '../../../components/ui/Button'
 import { TextField } from '../../../components/ui/TextField'
@@ -13,6 +13,7 @@ import { aSolicitudNegocio, validarNegocio } from '../validacion'
 import type { ErroresNegocio } from '../validacion'
 
 export function CrearNegocioForm({ onCreado }: { onCreado: () => void }) {
+  const { store } = useSesion()
   const puedeCrearUsuario = usePermiso('crear_usuario', 'plataforma')
   const [nombre, setNombre] = useState('')
   const [tipo, setTipo] = useState('')
@@ -42,7 +43,7 @@ export function CrearNegocioForm({ onCreado }: { onCreado: () => void }) {
     enviando.current = true
     setPending(true)
     try {
-      const negocio = await crearNegocio(aSolicitudNegocio(valores))
+      const negocio = await store.enContexto(({ signal }) => crearNegocio(aSolicitudNegocio(valores), { signal }))
       setNombre('')
       setTipo('')
       setAdministrador(null)

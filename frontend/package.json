@@ -8,6 +8,11 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test:api": "node verificar-api.mjs",
+    "test:panel": "node verificar-panel.mjs",
+    "test:sesion": "node verificar-sesion.mjs",
+    "test:membresias": "node verificar-membresias.mjs",
+    "test:flujos": "node verificar-flujos.mjs",
+    "test": "node verificar-api.mjs && node verificar-sesion.mjs && node verificar-panel.mjs && node verificar-membresias.mjs && node verificar-flujos.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -19,6 +24,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "jsdom": "^29.1.1",
     "oxlint": "^1.90.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.6"

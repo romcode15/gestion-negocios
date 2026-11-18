@@ -1,11 +1,12 @@
-import { useCallback, useId, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { Pagina } from '../../../api/types'
 import { usePermiso } from '../../../app/providers/SessionContext'
 import type { ContextoConsulta } from '../../../app/providers/useConsultaContexto'
 import { useConsultaContexto } from '../../../app/providers/useConsultaContexto'
 import { ApiFeedback } from '../../../components/feedback/ApiFeedback'
 import { EmptyState, Loading } from '../../../components/feedback/Feedback'
-import { Button } from '../../../components/ui/Button'
+import { Pagination } from '../../../components/ui/Pagination'
+import { SelectField } from '../../../components/ui/SelectField'
 import { listarUsuarios } from '../api'
 import { conUsuarios, opcionesDe } from '../seleccion'
 import type { Usuario } from '../types'
@@ -26,7 +27,6 @@ export function SelectorAdministrador({ value, onSeleccionar, recargarToken = 0,
   const puedeCrear = usePermiso('crear_usuario', 'plataforma')
   const [page, setPage] = useState(1)
   const [porId, setPorId] = useState<Record<number, Usuario>>({})
-  const fieldId = useId()
 
   // Sin permiso no se lanza la consulta: se devuelve una página vacía local.
   // recargarToken solo cambia la identidad de la consulta tras crear una cuenta.
@@ -45,7 +45,6 @@ export function SelectorAdministrador({ value, onSeleccionar, recargarToken = 0,
   }
 
   const opciones = useMemo(() => opcionesDe(porId, data?.results ?? [], value, adicionales), [porId, data, value, adicionales])
-  const describedBy = [errors.length ? fieldId + '-errors' : ''].filter(Boolean).join(' ') || undefined
 
   return <section className="selector-administrador">
     <h3>Administrador inicial</h3>
@@ -60,10 +59,9 @@ export function SelectorAdministrador({ value, onSeleccionar, recargarToken = 0,
       {!pending && !error && data?.count === 0 && <EmptyState title="No hay cuentas">
         <p>Crea una cuenta para poder asignarla como administradora.</p>
       </EmptyState>}
-      {opciones.length > 0 && <div className="field">
-        <label htmlFor={fieldId}>Cuenta administradora</label>
-        <select id={fieldId} name="administrador_id" required disabled={disabled}
-          value={value?.id ?? ''} aria-invalid={errors.length ? true : undefined} aria-describedby={describedBy}
+    </>}
+        <SelectField label="Cuenta administradora" name="administrador_id" required disabled={disabled}
+          value={value?.id ?? ''} errors={errors}
           onChange={(event) => {
             const id = Number(event.target.value)
             onSeleccionar(opciones.find((usuario) => usuario.id === id) ?? null)
@@ -72,16 +70,8 @@ export function SelectorAdministrador({ value, onSeleccionar, recargarToken = 0,
           {opciones.map((usuario) => <option key={usuario.id} value={usuario.id} disabled={!usuario.is_active}>
             {usuario.username}{usuario.is_active ? '' : ' (inactiva)'}
           </option>)}
-        </select>
-        {errors.length > 0 && <ul className="field-errors" id={fieldId + '-errors'}>
-          {errors.map((mensaje, indice) => <li key={indice}>{mensaje}</li>)}
-        </ul>}
-      </div>}
-      {data && <div className="paginacion">
-        <span aria-live="polite">Página {page} · {data.count} cuenta(s)</span>
-        <Button disabled={pending || page === 1 || !data.previous} onClick={() => irAPagina(Math.max(1, page - 1))}>Anterior</Button>
-        <Button disabled={pending || !data.next} onClick={() => irAPagina(page + 1)}>Siguiente</Button>
-      </div>}
-    </>}
+        </SelectField>
+      {puedeListar && data && <Pagination page={page} count={data.count} next={data.next} previous={data.previous}
+        pending={pending} disabled={disabled} onPage={irAPagina} label="cuentas" />}
   </section>
 }

@@ -17,7 +17,7 @@ export function opcionesDeRoles(
   const mapa = conRoles(porId, resultados)
   for (const rol of adicionales) mapa[rol.id] = rol
   return Object.values(mapa)
-    .filter((rol) => rol.negocio_id === negocioId)
+    .filter((rol) => negocioId !== null && rol.negocio_id === negocioId)
     .sort((a, b) => a.id - b.id)
 }
 
@@ -28,6 +28,7 @@ export function nombreRol(porId: Record<number, Rol>, rolId: number): string {
 }
 
 export interface EstadoRoles {
+  catalogo?: Rol[]
   opciones: Rol[]
   pagina: Pagina<Rol> | null
   paginaActual: number

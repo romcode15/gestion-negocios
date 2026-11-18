@@ -5,10 +5,12 @@ import { ApiFeedback } from '../../../components/feedback/ApiFeedback'
 import { Button } from '../../../components/ui/Button'
 import { TextField } from '../../../components/ui/TextField'
 import { crearUsuario } from '../api'
+import { useSesion } from '../../../app/providers/SessionContext'
 import type { Usuario } from '../types'
 import { aSolicitudUsuario, validarUsuario } from '../validacion'
 
 export function CrearUsuarioForm({ onCreado, disabled = false }: { onCreado: (usuario: Usuario) => void; disabled?: boolean }) {
+  const { store } = useSesion()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<Record<string, string[]>>({})
@@ -33,7 +35,7 @@ export function CrearUsuarioForm({ onCreado, disabled = false }: { onCreado: (us
     enviando.current = true
     setPending(true)
     try {
-      const usuario = await crearUsuario(aSolicitudUsuario({ username, password }))
+      const usuario = await store.enContexto(({ signal }) => crearUsuario(aSolicitudUsuario({ username, password }), { signal }))
       setUsername('')
       setPassword('')
       setErrors({})

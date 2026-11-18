@@ -4,7 +4,7 @@ import { usePermiso, useSesion } from '../../../app/providers/SessionContext'
 import type { ContextoConsulta } from '../../../app/providers/useConsultaContexto'
 import { useConsultaContexto } from '../../../app/providers/useConsultaContexto'
 import { AccessDenied } from '../../../components/feedback/Feedback'
-import { listarRoles } from '../../roles/api'
+import { cargarPaginasRoles } from '../catalogo'
 import type { Rol } from '../../roles/types'
 import { listarMembresias } from '../api'
 import { CrearMembresiaForm } from '../components/CrearMembresiaForm'
@@ -34,9 +34,9 @@ export function MembresiasPage() {
   }, [puedeListar, negocioId, page])
 
   const cargarRoles = useCallback(({ signal }: ContextoConsulta) => {
-    if (!puedeListarRoles || negocioId === null) return Promise.resolve(paginaVaciaRoles)
-    return listarRoles(negocioId, { page: paginaRoles, signal })
-  }, [puedeListarRoles, negocioId, paginaRoles])
+    if (!puedeListarRoles || negocioId === null) return Promise.resolve([paginaVaciaRoles])
+    return cargarPaginasRoles(negocioId, signal)
+  }, [puedeListarRoles, negocioId])
 
   const consultaMembresias = useConsultaContexto(cargarMembresias)
   const consultaRoles = useConsultaContexto(cargarRoles)
@@ -44,23 +44,24 @@ export function MembresiasPage() {
   // Los roles de las páginas ya visitadas se conservan para resolver nombres
   // y mantener la selección al paginar. Un cambio de negocio remonta la página.
   function irAPaginaRoles(nueva: number) {
-    const actuales = consultaRoles.data
+    const actuales = consultaRoles.data?.[paginaRoles - 1]
     if (actuales) setRolesPaginas((actual) => conRoles(actual, actuales.results))
     setPaginaRoles(nueva)
   }
 
   const rolesPorId = useMemo(
-    () => conRoles(rolesPaginas, consultaRoles.data?.results ?? []),
-    [rolesPaginas, consultaRoles.data],
+    () => conRoles({}, consultaRoles.data?.flatMap((pagina) => pagina.results) ?? []),
+    [consultaRoles.data],
   )
   const opcionesRoles = useMemo(
-    () => opcionesDeRoles(rolesPaginas, consultaRoles.data?.results ?? [], negocioId),
-    [rolesPaginas, consultaRoles.data, negocioId],
+    () => opcionesDeRoles(rolesPaginas, consultaRoles.data?.[paginaRoles - 1]?.results ?? [], negocioId),
+    [rolesPaginas, consultaRoles.data, paginaRoles, negocioId],
   )
 
   const estadoRoles: EstadoRoles = {
+    catalogo: Object.values(rolesPorId),
     opciones: opcionesRoles,
-    pagina: consultaRoles.data,
+    pagina: consultaRoles.data?.[paginaRoles - 1] ?? null,
     paginaActual: paginaRoles,
     pendiente: consultaRoles.pending,
     error: consultaRoles.error,
@@ -90,6 +91,7 @@ export function MembresiasPage() {
   }
 
   return <>
+    <h1>Membresías del negocio</h1>
     {mensaje && <p role="status">{mensaje}</p>}
     {negocioId === null && <p className="feedback" role="note">Selecciona un negocio activo para ver sus membresías.</p>}
     {!puedeListar && <AccessDenied />}

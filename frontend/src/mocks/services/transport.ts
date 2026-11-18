@@ -33,9 +33,14 @@ export function reiniciarMocks() {
   userId = null; csrf = false; latency = 150; scenario = 'normal'
   rememberIdentity(null)
 }
-export function configurarMocks(options: { latencia?: number; escenario?: Scenario }) {
+export function configurarMocks(options: { latencia?: number; escenario?: Scenario; usuariosInactivos?: number[] }) {
   if (options.latencia !== undefined) latency = Math.max(0, options.latencia)
   if (options.escenario !== undefined) scenario = options.escenario
+  if (options.usuariosInactivos) {
+    for (const user of data.usuarios) {
+      if (options.usuariosInactivos.includes(user.id)) user.is_active = false
+    }
+  }
 }
 function fail(code: string, detail: string, status: number, errors: Record<string, string[]> = {}): never {
   throw new ApiException(code, detail, errors, status)

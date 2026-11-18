@@ -6,4 +6,5 @@ export interface EntradaModulo {
   Page: ComponentType
   ambito: 'publico' | 'plataforma' | 'negocio'
   permiso: string
+  permisosAlternativos?: string[]
 }

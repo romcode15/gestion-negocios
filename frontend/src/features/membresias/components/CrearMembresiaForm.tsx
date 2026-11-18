@@ -10,6 +10,7 @@ import type { Membresia } from '../types'
 import { aSolicitudMembresia, validarMembresia } from '../validacion'
 import type { ErroresMembresia, ModoCuenta } from '../validacion'
 import { SelectorRoles } from './SelectorRoles'
+import { useSesion } from '../../../app/providers/SessionContext'
 
 type Props = {
   negocioId: number | null
@@ -18,6 +19,7 @@ type Props = {
 }
 
 export function CrearMembresiaForm({ negocioId, estadoRoles, onCreado }: Props) {
+  const { store } = useSesion()
   const [modo, setModo] = useState<ModoCuenta>('nueva')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -43,6 +45,9 @@ export function CrearMembresiaForm({ negocioId, estadoRoles, onCreado }: Props) 
     if (enviando.current || negocioId === null) return
     const valores = { username, password, rol_id: rolId, modo }
     const locales = validarMembresia(valores)
+    if (!estadoRoles.puedeListar || !(estadoRoles.catalogo ?? estadoRoles.opciones).some((rol) => rol.id === rolId && rol.negocio_id === negocioId)) {
+      locales.rol_id = ['Selecciona un rol autorizado del negocio activo.']
+    }
     setErrors(locales)
     setError(null)
     setMensaje('')
@@ -54,7 +59,7 @@ export function CrearMembresiaForm({ negocioId, estadoRoles, onCreado }: Props) 
     enviando.current = true
     setPending(true)
     try {
-      const membresia = await crearMembresia(negocioId, aSolicitudMembresia(valores))
+      const membresia = await store.enContexto(({ signal }) => crearMembresia(negocioId, aSolicitudMembresia(valores), { signal }))
       setModo('nueva')
       setUsername('')
       setPassword('')
@@ -97,7 +102,7 @@ export function CrearMembresiaForm({ negocioId, estadoRoles, onCreado }: Props) 
         value={password} errors={errors.password} onChange={(event) => setPassword(event.target.value)} />}
       <SelectorRoles estado={estadoRoles} value={rolId}
         onSeleccionar={(rol) => setRolId(rol?.id ?? null)} errors={errors.rol_id} disabled={pending} />
-      <Button type="submit" pending={pending} pendingLabel="Incorporando…">Incorporar miembro</Button>
+      <Button type="submit" pending={pending} disabled={!estadoRoles.puedeListar || !(estadoRoles.catalogo ?? estadoRoles.opciones).length} pendingLabel="Incorporando…">Incorporar miembro</Button>
     </fieldset>
   </form>
 }

@@ -3,7 +3,8 @@ import { useSesion, usePermiso } from '../../../app/providers/SessionContext'
 import { useConsultaContexto } from '../../../app/providers/useConsultaContexto'
 import type { ContextoConsulta } from '../../../app/providers/useConsultaContexto'
 import type { Pagina } from '../../../api/types'
-import { AccessDenied, EmptyState, ErrorMessage, Loading } from '../../../components/feedback/Feedback'
+import { AccessDenied, EmptyState } from '../../../components/feedback/Feedback'
+import { PaginatedTable } from '../../../components/ui/PaginatedTable'
 import { usePermisosDelegables } from '../components/usePermisosDelegables'
 import { listarRoles } from '../api'
 import type { Rol } from '../types'
@@ -59,49 +60,11 @@ function TablaRoles({ nombres }: { nombres: Map<number, string> | null }) {
 
   const { data, error, pending, reintentar } = useConsultaContexto(cargar)
 
-  if (pending) return <Loading>Cargando roles…</Loading>
-
-  if (error) {
-    return (
-      <>
-        <ErrorMessage>{error.detail}</ErrorMessage>
-        <button type="button" onClick={reintentar}>Reintentar</button>
-      </>
-    )
-  }
-
-  if (!data || data.results.length === 0) return <EmptyState />
-
-  return (
-    <>
-      <table>
-        <caption>Roles del negocio activo</caption>
-        <thead>
-          <tr>
-            <th scope="col">Nombre</th>
-            <th scope="col">Tipo</th>
-            <th scope="col">Permisos</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.results.map((rol) => (
-            <tr key={rol.id}>
-              <td>{rol.nombre}</td>
-              <td>{rol.predefinido ? 'Predefinido' : 'Propio del negocio'}</td>
-              <td>{descripcionPermisos(rol, nombres)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p>
-        <button type="button" disabled={data.previous === null} onClick={() => setPage((p) => p - 1)}>
-          Anterior
-        </button>{' '}
-        <span>Página {page}</span>{' '}
-        <button type="button" disabled={data.next === null} onClick={() => setPage((p) => p + 1)}>
-          Siguiente
-        </button>
-      </p>
-    </>
-  )
+  return <PaginatedTable title="Roles del negocio activo" loadingLabel="Cargando roles…" emptyTitle="No hay roles"
+    page={page} pagina={data} pending={pending} error={error} onPage={setPage} onRetry={reintentar}
+    rowKey={(rol) => rol.id} columns={[
+      { key: 'nombre', header: 'Nombre', render: (rol) => rol.nombre },
+      { key: 'tipo', header: 'Tipo', render: (rol) => rol.predefinido ? 'Predefinido' : 'Propio del negocio' },
+      { key: 'permisos', header: 'Permisos', render: (rol) => descripcionPermisos(rol, nombres) },
+    ]} />
 }
