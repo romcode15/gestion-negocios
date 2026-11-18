@@ -3,6 +3,7 @@ import { useSesion, usePermiso } from '../../../app/providers/SessionContext'
 import { useConsultaContexto } from '../../../app/providers/useConsultaContexto'
 import type { ContextoConsulta } from '../../../app/providers/useConsultaContexto'
 import type { Pagina } from '../../../api/types'
+import { AccessDenied, EmptyState, ErrorMessage, Loading } from '../../../components/feedback/Feedback'
 import { listarRoles } from '../api'
 import type { Rol } from '../types'
 
@@ -14,9 +15,9 @@ export function RolesPage() {
     <section>
       <h1>Roles del negocio</h1>
       {negocioId === null ? (
-        <p>No hay un negocio activo seleccionado.</p>
+        <EmptyState title="Sin negocio activo">Selecciona un negocio para ver sus roles.</EmptyState>
       ) : !puedeListar ? (
-        <p role="alert">No tienes permiso para consultar los roles de este negocio.</p>
+        <AccessDenied />
       ) : (
         // key={negocioId}: al cambiar de negocio se reinicia todo (página, errores, datos)
         <TablaRoles key={negocioId} />
@@ -38,18 +39,18 @@ function TablaRoles() {
 
   const { data, error, pending, reintentar } = useConsultaContexto(cargar)
 
-  if (pending) return <p role="status">Cargando roles…</p>
+  if (pending) return <Loading>Cargando roles…</Loading>
 
   if (error) {
     return (
-      <div>
-        <p role="alert">{error.detail}</p>
+      <>
+        <ErrorMessage>{error.detail}</ErrorMessage>
         <button type="button" onClick={reintentar}>Reintentar</button>
-      </div>
+      </>
     )
   }
 
-  if (!data || data.results.length === 0) return <p>No hay resultados.</p>
+  if (!data || data.results.length === 0) return <EmptyState />
 
   return (
     <>
