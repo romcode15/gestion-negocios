@@ -42,6 +42,7 @@ try {
   const users = await load('features/usuarios/api.ts')
   const negocios = await load('features/negocios/api.ts')
   const members = await load('features/membresias/api.ts')
+  const roles = await load('features/roles/api.ts')
   const { ApiException } = await load('api/errors.ts')
   const { navegar } = await load('app/routes/navigation.ts')
   mock.reiniciarMocks(); mock.configurarMocks({ latencia: 0 })
@@ -96,6 +97,12 @@ try {
   } finally { mock.mockTransport.request = originalRequest }
   await click(button('Cerrar sesión'))
   await login('admin_tienda')
+  await roles.crearRol(1, { nombre: 'Rol integrado de dev', permiso_ids: [5] })
+  await go('/negocio/roles')
+  assert.match(document.querySelector('table').textContent, /Administrador de negocio/)
+  assert.match(document.querySelector('table').textContent, /listar_roles/)
+  await click(document.querySelector('[aria-label="Paginación de roles del negocio activo"] button:last-child'))
+  assert.match(document.querySelector('table').textContent, /Rol integrado de dev/)
   await go('/negocio/membresias')
   assert.match(document.body.textContent, /Miembros del negocio/)
   assert.match(document.querySelector('table').textContent, /admin_tienda/)
@@ -132,6 +139,17 @@ try {
   assert.ok(!(await auth.obtenerSesion()).negocios[0].permisos.includes('asignar_rol'))
   await click(button('Cerrar sesión'))
   await login('compartido')
+  let catalogRequests = 0
+  const requestBeforeRoles = mock.mockTransport.request
+  mock.mockTransport.request = async (options) => {
+    if (options.path.includes('/permisos/')) catalogRequests++
+    return requestBeforeRoles(options)
+  }
+  try {
+    await go('/negocio/roles')
+    assert.match(document.querySelector('table').textContent, /permisos \(IDs:/)
+    assert.equal(catalogRequests, 0)
+  } finally { mock.mockTransport.request = requestBeforeRoles }
   await go('/negocio/membresias')
   mock.configurarMocks({ latencia: 30 })
   await change(document, 'negocio-activo', '2')
@@ -149,6 +167,7 @@ try {
   assert.equal(document.querySelector('table'), null)
   console.log('OK DOM #14: duplicado, contraseña inválida, selección automática, foco, envío único, paginación y fallo de red conservando entradas.')
   console.log('OK DOM #15: cambio de modo limpia contraseña/errores, dos modalidades, envío único, rol propio refresca permisos, cambio rápido de negocio y expiración.')
+  console.log('OK integración dev: listado de roles, nombres de permisos, paginación compartida y catálogo restringido a crear_rol.')
 } finally {
   await act(async () => root.unmount())
   await server.close()

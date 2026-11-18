@@ -70,15 +70,17 @@ Cada operación recibe el ID de negocio explícitamente. El mock valida permisos
 
 Los datos y credenciales ficticias viven en memoria; las altas y cambios se reflejan en siguientes consultas durante la ejecución. Al recargar se restaura la semilla. Solo la identidad ficticia de una cuenta inicial se conserva en sessionStorage para que auth/me pueda restaurar su sesión. No se guardan contraseñas ni tokens de sesión en el navegador. Las cuentas creadas durante la ejecución desaparecen al recargar. reiniciarMocks también elimina la identidad guardada y cierra la sesión simulada.
 
-Cuentas ficticias, todas con contraseña **Demo-12345!**:
+### Usuarios y contraseñas de prueba
 
-| Username | Escenario |
-| --- | --- |
-| plataforma | Permisos de plataforma; sin membresías iniciales |
-| admin_tienda | Administrador de Tienda Central, ID 1 |
-| admin_ferreteria | Administrador de Ferretería Norte, ID 2 |
-| compartido | Consulta en tienda; sin permisos en ferretería |
-| existente | Cuenta activa sin membresías iniciales |
+Estas cuentas solo funcionan con `VITE_API_MODE=mock`; no son cuentas de Django/PostgreSQL.
+
+| Usuario | Contraseña | Acceso |
+| --- | --- | --- |
+| `plataforma` | `Demo-12345!` | Administración de plataforma; sin negocios asignados |
+| `admin_tienda` | `Demo-12345!` | Administrador de Tienda Central, ID 1 |
+| `admin_ferreteria` | `Demo-12345!` | Administrador de Ferretería Norte, ID 2 |
+| `compartido` | `Demo-12345!` | Consulta en tienda; sin permisos en ferretería |
+| `existente` | `Demo-12345!` | Cuenta activa sin negocios asignados |
 
 La contraseña es exclusivamente de demostración. El mock exige 8 caracteres al crear una cuenta; no reproduce todos los validadores de contraseñas de Django.
 
