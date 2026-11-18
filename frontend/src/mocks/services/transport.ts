@@ -9,29 +9,14 @@ type Scenario = 'normal' | 'empty' | 'validation_error' | 'invalid_credentials' 
 export const TAMANO_PAGINA = 2
 let data = crearDatosIniciales()
 let passwords = new Map(data.usuarios.map((u) => [u.username, 'Demo-12345!']))
-// Solo identidad ficticia de cuentas semilla; nunca contraseñas ni tokens.
-const SESSION_KEY = 'gestion-negocios:mock-user'
-function readIdentity(): number | null {
-  try {
-    const id = Number(sessionStorage.getItem(SESSION_KEY))
-    return data.usuarios.some((user) => user.id === id) ? id : null
-  } catch { return null }
-}
-function rememberIdentity(id: number | null) {
-  try {
-    if (id === null) sessionStorage.removeItem(SESSION_KEY)
-    else sessionStorage.setItem(SESSION_KEY, String(id))
-  } catch { /* Almacenamiento bloqueado: la sesión queda solo en memoria. */ }
-}
-let userId: number | null = readIdentity()
-let csrf = userId !== null
+let userId: number | null = null
+let csrf = false
 let latency = 150
 let scenario: Scenario = 'normal'
 export function reiniciarMocks() {
   data = crearDatosIniciales()
   passwords = new Map(data.usuarios.map((u) => [u.username, 'Demo-12345!']))
   userId = null; csrf = false; latency = 150; scenario = 'normal'
-  rememberIdentity(null)
 }
 export function configurarMocks(options: { latencia?: number; escenario?: Scenario }) {
   if (options.latencia !== undefined) latency = Math.max(0, options.latencia)
@@ -110,7 +95,7 @@ function dispatch({ method, path, body }: ApiRequest): unknown {
   const currentScenario = scenario
   scenario = 'normal'
   if (currentScenario !== 'normal' && currentScenario !== 'empty') {
-    if (currentScenario === 'not_authenticated') { userId = null; rememberIdentity(null) }
+    if (currentScenario === 'not_authenticated') userId = null
     if (currentScenario === 'csrf_failed') csrf = false
     fail(currentScenario, 'Escenario simulado: ' + currentScenario,
       ['validation_error', 'invalid_credentials'].includes(currentScenario) ? 400 : currentScenario === 'not_found' ? 404 : 403,
@@ -125,11 +110,10 @@ function dispatch({ method, path, body }: ApiRequest): unknown {
     const user = data.usuarios.find((u) => u.username === username && u.is_active)
     if (!user || passwords.get(username) !== password) fail('invalid_credentials', 'Credenciales inválidas.', 400)
     userId = user.id
-    rememberIdentity(user.id)
     return session()
   }
   if (route === '/auth/me/' && method === 'GET') return session()
-  if (route === '/auth/logout/' && method === 'POST') { account(); userId = null; rememberIdentity(null); return undefined }
+  if (route === '/auth/logout/' && method === 'POST') { account(); userId = null; return undefined }
   account()
   const list = <T,>(items: T[]) => page(currentScenario === 'empty' ? [] : items, route, pageNumber)
   if (route === '/plataforma/usuarios/') {
