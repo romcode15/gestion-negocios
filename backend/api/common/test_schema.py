@@ -33,6 +33,7 @@ class DocumentacionTests(SimpleTestCase):
         self.assertEqual(set(paths), {
             "/api/v1/auth/csrf/", "/api/v1/auth/login/", "/api/v1/auth/me/", "/api/v1/auth/logout/",
             "/api/v1/plataforma/usuarios/", "/api/v1/plataforma/negocios/",
+            "/api/v1/negocios/{negocio_id}/permisos/", "/api/v1/negocios/{negocio_id}/roles/",
         })
         components = schema["components"]["schemas"]
         request = components["CrearUsuarioRequest"]["properties"]
