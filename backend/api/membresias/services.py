@@ -4,10 +4,22 @@ from django.db import transaction
 
 from accesos.models import Membresia, Rol
 from api.common.access import validar_asignacion_rol
+from api.common.role_policy import validar_cambio_rol
 from api.plataforma.services import crear_usuario
 
 
 PASSWORD_NO_ENVIADO = object()
+
+
+@transaction.atomic
+def cambiar_rol(contexto, membresia, rol_id):
+    rol = Rol.objects.filter(pk=rol_id, negocio_id=contexto.negocio.pk).first()
+    if rol is None:
+        raise ValidationError({"rol_id": ["Selecciona un rol del negocio activo."]})
+    actual = validar_cambio_rol(contexto, membresia, rol)
+    actual.rol = rol
+    actual.save(update_fields=["rol"])
+    return actual
 
 
 @transaction.atomic

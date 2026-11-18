@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from accesos.models import Membresia
 from api.common.serializers import UsuarioSerializer
-from api.membresias.services import crear_membresia
+from api.membresias.services import cambiar_rol, crear_membresia
 
 
 class MembresiaSerializer(serializers.ModelSerializer):
@@ -46,3 +46,13 @@ class CrearMembresiaSerializer(serializers.Serializer):
             instance,
             context=self.context,
         ).data
+
+
+class CambiarRolSerializer(serializers.Serializer):
+    rol_id = serializers.IntegerField(min_value=1)
+
+    def update(self, instance, validated_data):
+        return cambiar_rol(self.context["contexto_negocio"], instance, validated_data["rol_id"])
+
+    def to_representation(self, instance):
+        return MembresiaSerializer(instance, context=self.context).data
