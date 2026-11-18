@@ -68,7 +68,7 @@ Cada operación recibe el ID de negocio explícitamente. El mock valida permisos
 
 ## Datos y persistencia simulados
 
-Todo vive en memoria del módulo: datos, sesión, token y credenciales ficticias. Las altas y cambios se reflejan en siguientes consultas mientras la aplicación siga cargada. Al recargar, reiniciar Vite o llamar reiniciarMocks se restaura la semilla y se cierra la sesión. No se usa localStorage, sessionStorage, IndexedDB ni cookies para guardar contraseñas. Las cuentas creadas durante la ejecución también desaparecen al reiniciar.
+Los datos y credenciales ficticias viven en memoria; las altas y cambios se reflejan en siguientes consultas durante la ejecución. Al recargar se restaura la semilla. Solo la identidad ficticia de una cuenta inicial se conserva en sessionStorage para que auth/me pueda restaurar su sesión. No se guardan contraseñas ni tokens de sesión en el navegador. Las cuentas creadas durante la ejecución desaparecen al recargar. reiniciarMocks también elimina la identidad guardada y cierra la sesión simulada.
 
 Cuentas ficticias, todas con contraseña **Demo-12345!**:
 
@@ -118,7 +118,7 @@ await roles.listarRoles(1) // lista vacía con contrato Pagina
 - empty vacía solo la respuesta de listado, sin borrar datos.
 - normal permite probar altas y siguientes consultas con estado actualizado.
 
-No hay almacenamiento persistente ni llamadas HTTP en modo mock.
+No hay llamadas HTTP en modo mock. sessionStorage conserva únicamente la identidad ficticia descrita arriba; los datos y contraseñas no persisten.
 
 ## Verificación ejecutada
 
@@ -133,3 +133,9 @@ npm.cmd run build
 verificar-api.mjs ejecuta las funciones públicas con mocks y prueba el transporte HTTP con fetch sustituido. Verifica payloads, 204, cookies, rotación de CSRF, errores, paginación, permisos, contexto, mutaciones, validaciones, altas conjuntas, cancelación y reinicio.
 
 No necesita Django. La integración real, las políticas finales de contraseña/paginación y el comportamiento del servidor ante cookies/CSRF quedan pendientes de comprobar con Django/PostgreSQL. No se han añadido ni validado pantallas en esta issue.
+
+## Pantallas de plataforma y membresías
+
+Las pantallas de #14 y #15 consumen estas firmas. Componentes compartidos y contratos de contexto: [COMPONENTES.md](COMPONENTES.md). Evidencia reproducible: PANEL_VERIFICACION.md y MEMBRESIAS_VERIFICACION.md. Ejecutar `npm.cmd test` para todas las comprobaciones.
+
+Para simular cuentas inactivas: `configurarMocks({ usuariosInactivos: [5] })` marca la cuenta existente como inactiva hasta `reiniciarMocks()`. No cambia el contrato público de la API ni agrega campos a respuestas.
