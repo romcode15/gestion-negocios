@@ -115,11 +115,27 @@ El servicio no confía en que el contexto recibido siga vigente: vuelve a consul
 
 La transacción bloquea la fila de Existencia antes de leer y modificar el saldo. Las modificaciones sensibles de Producto —unidad, categoría y activo— también bloquean esa fila antes de releer el producto. Mantener el mismo orden de bloqueo; no mezclar un camino producto→existencia con otro existencia→producto. La creación de producto bloquea/valida la categoría e inicializa su existencia en la misma transacción; la desactivación de categoría y altas/reactivaciones de producto coordinan el bloqueo de categoría para evitar categorías inactivas con productos activos.
 
+Para B5, encerrar la edición sensible en `transaction.atomic()`, tomar `Existencia.objects.select_for_update()` filtrada por negocio y producto y volver a consultar el producto. Si el cambio requiere validar una categoría activa, tomar su bloqueo después del de Existencia. El alta sigue tomando el bloqueo de categoría antes de crear las filas nuevas.
+
 Normalizar la solicitud antes de calcular su huella: mismo actor, producto, tipo, motivo recortado, cantidad/objetivo canónicos y versión esperada. La clave no forma parte de la huella. Verificar la clave dentro de la operación, y antes de rechazar una versión desactualizada, para permitir reintentos de ajustes ya confirmados. Una reutilización incompatible devuelve 409 sin revelar el movimiento de otro actor. Capturar choques de unicidad con un punto de guardado y resolver únicamente el caso esperado; no disfrazar cualquier IntegrityError de duplicado.
 
 Definir `ConflictoInventario` como excepción DRF con `status_code=409`, `default_code="conflict"` y un mensaje legible. El manejador existente conserva `{ code, detail, errors: {} }`; no devolver un objeto distinto desde cada vista. Si se requiere ampliar un helper común, mantener sus casos de fase 1.
 
 Guardar movimiento, saldo y versión juntos. No actualizar existencias desde views, serializers, señales, tareas externas o admin. No reimplementar este algoritmo en entradas/salidas y ajustes. Una excepción posterior a cambiar saldo debe revertirlo todo.
+
+### Uso desde B7 y B8
+
+```python
+from api.inventario.services import registrar_movimiento
+
+# En POST /movimientos/, tipo se valida como entrada o salida.
+movimiento = registrar_movimiento(contexto, **serializer.validated_data)
+
+# En POST /ajustes/, la vista fija tipo y el serializer recibe el stock y la versión.
+movimiento = registrar_movimiento(contexto, tipo="ajuste", **serializer.validated_data)
+```
+
+Los serializers validan la forma JSON del contrato y pasan `Decimal` para cantidades u objetivos y `UUID` para la clave. La salida se envía con una cantidad positiva. En un reintento autorizado se conserva la clave y la entrada original, incluida la versión del ajuste. La vista responde 201 tanto para una operación nueva como para una repetición idéntica. El manejador común convierte `ConflictoInventario` al 409 acordado.
 
 ## 6. Implementación de endpoints
 
