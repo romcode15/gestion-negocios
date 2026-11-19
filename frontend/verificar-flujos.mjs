@@ -73,7 +73,7 @@ try {
   assert.match(document.body.textContent, /Ferretería Norte/)
   const accountForm = () => document.querySelector('form [name="username"]').closest('form')
   const negocioForm = () => document.querySelector('form [name="nombre"]').closest('form')
-  assert.equal(field(negocioForm(), 'administrador_id').options.length, 6)
+  assert.equal(field(negocioForm(), 'administrador_id').options.length, 7)
   assert.ok(field(negocioForm(), 'administrador_id').querySelector('option[value="5"]'))
   assert.equal(negocioForm().querySelector('[aria-label="Paginación de cuentas"]'), null)
   await change(accountForm(), 'username', 'plataforma')
@@ -86,8 +86,9 @@ try {
   assert.match(accountForm().textContent, /8 caracteres/)
   await change(accountForm(), 'password', 'Valida-12345!')
   await submit(accountForm(), true)
-  assert.equal((await users.listarUsuarios()).count, 6)
-  assert.equal(field(negocioForm(), 'administrador_id').value, '6')
+  assert.equal((await users.listarUsuarios()).count, 7)
+  const createdAdminId = field(negocioForm(), 'administrador_id').value
+  assert.equal(field(negocioForm(), 'administrador_id').selectedOptions[0].textContent, 'ui_admin')
   assert.equal(field(accountForm(), 'password').value, '')
   await change(negocioForm(), 'nombre', 'Negocio DOM')
   await submit(negocioForm())
@@ -101,14 +102,14 @@ try {
   assert.match(document.querySelector('table').textContent, /Negocio DOM/)
   await change(negocioForm(), 'nombre', 'Entrada conservada')
   await change(negocioForm(), 'tipo', 'tienda')
-  await change(negocioForm(), 'administrador_id', '6')
+  await change(negocioForm(), 'administrador_id', createdAdminId)
   const originalRequest = mock.mockTransport.request
   mock.mockTransport.request = async () => { throw new ApiException('network_error', 'Sin conexión') }
   try {
     await submit(negocioForm())
     assert.match(negocioForm().textContent, /No se pudo conectar/)
     assert.equal(field(negocioForm(), 'nombre').value, 'Entrada conservada')
-    assert.equal(field(negocioForm(), 'administrador_id').value, '6')
+    assert.equal(field(negocioForm(), 'administrador_id').value, createdAdminId)
   } finally { mock.mockTransport.request = originalRequest }
   await click(button('Cerrar sesión'))
   await login('admin_tienda')

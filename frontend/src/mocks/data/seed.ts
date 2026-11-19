@@ -2,10 +2,11 @@ import type { Usuario } from '../../features/usuarios/types'
 import type { Negocio } from '../../features/negocios/types'
 import type { Permiso, Rol } from '../../features/roles/types'
 import type { Membresia } from '../../features/membresias/types'
+import { permisosFase2 } from './fase2'
 export const globalCodes = ['listar_negocios', 'crear_negocio', 'listar_usuarios', 'crear_usuario']
-export const businessCodes = ['listar_roles', 'crear_rol', 'listar_membresias', 'crear_membresia', 'asignar_rol']
+export const businessCodes = ['listar_roles', 'crear_rol', 'listar_membresias', 'crear_membresia', 'asignar_rol', ...permisosFase2]
 export function crearDatosIniciales() {
-  const usuarios: Usuario[] = ['plataforma', 'admin_tienda', 'admin_ferreteria', 'compartido', 'existente'].map((username, index) => ({ id: index + 1, username, is_active: true }))
+  const usuarios: Usuario[] = ['plataforma', 'admin_tienda', 'admin_ferreteria', 'compartido', 'existente', 'inactivo'].map((username, index) => ({ id: index + 1, username, is_active: username !== 'inactivo' }))
   const negocios: Negocio[] = [
     { id: 1, nombre: 'Tienda Central', tipo: 'tienda', activo: true },
     { id: 2, nombre: 'Ferretería Norte', tipo: 'ferretería', activo: true },
