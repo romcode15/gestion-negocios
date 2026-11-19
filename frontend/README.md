@@ -80,6 +80,7 @@ Para una revisión visual manual, usar modo HTTP: crear una cuenta administrador
 ## Documentación y trabajo en equipo
 
 - [Fase 1](fase1.md): contrato y criterios.
+- [Fase 2](fase2.md): módulos, componentes y modales; leer también el [contrato común](../fase2.md).
 - [Estructura](ESTRUCTURA.md): módulos y responsabilidades.
 - [API](API.md): firmas, simulación y transporte HTTP.
 - [Componentes](COMPONENTES.md): interfaces compartidas.
