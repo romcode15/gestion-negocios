@@ -91,6 +91,7 @@ Probar además desde Swagger un caso permitido, otro sin permiso y, para módulo
 ## Documentación y pruebas
 
 - [Fase 1](Fase1.md): contrato y criterios de cierre.
+- [Fase 2](fase2.md): guía de catálogo/inventario y reparto de backend; leer también el [contrato común](../fase2.md).
 - [Estructura](ESTRUCTURA.md): carpetas y responsabilidades.
 - [Modelos](MODELOS.md): integridad y preparación inicial.
 - [API y seguridad](API.md): sesiones, permisos, transacciones e imports compartidos.

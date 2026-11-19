@@ -103,6 +103,7 @@ Seguir la [guía de GitHub del equipo](guiagithub.md) para nombres de ramas, com
 
 - **Fase 0 · Preparación del proyecto.** Romel configura el repositorio, Django con PostgreSQL y React con TypeScript, y documenta cómo ejecutar el proyecto desde un clon limpio.
 - **Fase 1 · Usuarios, negocios, roles y membresías.** Tres integrantes trabajan en backend y tres en frontend. El flujo se completa cuando el superadministrador crea un negocio y asigna a su administrador, y este crea un rol con permisos y lo asigna a un usuario mediante su membresía.
+- **Fase 2 · Catálogo e inventario básico.** Categorías, productos, existencias, entradas, salidas, ajustes e historial por negocio. El [contrato común](fase2.md) define campos, rutas, permisos y dependencias. Consultar las guías de [backend](backend/fase2.md) y [frontend](frontend/fase2.md) antes de implementar sus issues. Es una entrega planificada; su publicación no significa que ya esté implementada.
 
 ### Desarrollo en paralelo e integración
 
