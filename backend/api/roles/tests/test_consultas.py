@@ -26,6 +26,10 @@ def roles_url(negocio_id):
     return f"/api/v1/negocios/{negocio_id}/roles/"
 
 
+def asignables_url(negocio_id):
+    return f"/api/v1/negocios/{negocio_id}/roles/asignables/"
+
+
 class ConsultasRolesTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -215,4 +219,53 @@ class ConsultasRolesTests(TestCase):
         self.client.get("/api/v1/auth/csrf/")
         token = self.client.cookies["csrftoken"].value
         response = self.client.post(permisos_url(self.tienda.negocio.pk), {}, format="json", HTTP_X_CSRFTOKEN=token)
+        self.assert_error(response, 405, "method_not_allowed")
+
+    def test_asignables_con_cada_permiso_minimo_sin_listar_roles(self):
+        for permiso in ("crear_membresia", "asignar_rol"):
+            with self.subTest(permiso=permiso):
+                usuario, membresia = self.miembro(self.tienda, permiso, [permiso])
+                self.login(usuario)
+                primera, roles = self.todas_las_paginas(asignables_url(self.tienda.negocio.pk))
+                self.assertEqual(primera["count"], 2)
+                self.assertEqual({r["id"] for r in roles}, {self.vacio.pk, membresia.rol_id})
+                self.assertTrue(all(set(r) == CAMPOS_ROL for r in roles))
+                self.assertTrue(all(r["negocio_id"] == self.tienda.negocio.pk for r in roles))
+                self.assert_error(self.client.get(roles_url(self.tienda.negocio.pk)), 403, "permission_denied")
+                self.assert_error(self.client.get(permisos_url(self.tienda.negocio.pk)), 403, "permission_denied")
+
+    def test_asignables_admin_paginacion_y_aislamiento(self):
+        self.login(self.tienda.administrador)
+        primera, roles = self.todas_las_paginas(asignables_url(self.tienda.negocio.pk))
+        self.assertEqual(primera["count"], 3)
+        self.assertEqual({r["id"] for r in roles}, {self.tienda.rol.pk, self.cajero.pk, self.vacio.pk})
+        self.assert_error(self.client.get(asignables_url(self.tienda.negocio.pk) + "?page=999"), 404, "not_found")
+        for negocio_id in (self.ferreteria.negocio.pk, 999999):
+            self.assert_error(self.client.get(asignables_url(negocio_id)), 403, "permission_denied")
+
+    def test_asignables_rechaza_lectores_y_creadores_de_roles(self):
+        for permiso in ("listar_roles", "crear_rol", "listar_membresias"):
+            usuario, _ = self.miembro(self.tienda, permiso, [permiso])
+            self.login(usuario)
+            self.assert_error(self.client.get(asignables_url(self.tienda.negocio.pk)), 403, "permission_denied")
+
+    def test_asignables_revalida_permisos_y_contexto_activo(self):
+        self.assert_error(self.client.get(asignables_url(self.tienda.negocio.pk)), 403, "not_authenticated")
+        self.login(self.tienda.administrador)
+        RolPermiso.objects.filter(rol=self.tienda.rol, permiso__codigo="crear_rol").delete()
+        _, roles = self.todas_las_paginas(asignables_url(self.tienda.negocio.pk))
+        self.assertNotIn(self.cajero.pk, {r["id"] for r in roles})
+        for objeto in (self.tienda.negocio, self.tienda.membresia, self.tienda.administrador):
+            campo = "is_active" if objeto == self.tienda.administrador else "activo"
+            setattr(objeto, campo, False)
+            objeto.save()
+            self.assertEqual(self.client.get(asignables_url(self.tienda.negocio.pk)).status_code, 403)
+            setattr(objeto, campo, True)
+            objeto.save()
+
+    def test_asignables_no_acepta_escrituras(self):
+        self.login(self.tienda.administrador)
+        self.client.get("/api/v1/auth/csrf/")
+        response = self.client.post(asignables_url(self.tienda.negocio.pk), {}, format="json",
+                                    HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value)
         self.assert_error(response, 405, "method_not_allowed")

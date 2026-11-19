@@ -1,6 +1,6 @@
 # Estructura de desarrollo del frontend
 
-Esta base incorpora tipos del contrato, componentes compartidos, layouts y entradas de páginas pendientes. La sesión, la simulación y las pantallas funcionales se implementarán en sus issues. Los `.gitkeep` conservan las carpetas reservadas.
+La fase 1 incorpora tipos compartidos, sesión, selección de negocio, componentes, layouts y pantallas de autenticación, plataforma, roles y membresías. Las llamadas tipadas pueden usar simulación o HTTP sin cambiar las pantallas.
 
 Fuentes obligatorias: [fase 1 frontend](fase1.md), [fase 1 backend](../backend/Fase1.md) y [README del proyecto](../README.md).
 
@@ -64,12 +64,12 @@ Pantalla → features/<funcionalidad>/api.ts → implementación simulada o HTTP
 
 - Las pantallas llaman funciones tipadas como `crearNegocio()`, `listarRoles()` y `crearMembresia()`. No importan directamente JSON ni dispersan llamadas `fetch`.
 - `mocks/data/` admite JSON o datos TypeScript ficticios que respeten el contrato. Preparar al menos dos negocios con roles y membresías distintos. No incluir credenciales reales.
-- `mocks/services/` implementará sesión, consultas, altas, cambios de rol, paginación y errores. El JSON estático por sí solo no simula estas operaciones.
-- Henry definirá una selección central entre implementación simulada y real, conservando firmas, respuestas y errores. No repartir comprobaciones de modo simulado por las pantallas. Documentar cómo persisten y se reinician los datos simulados.
-- `api/` alojará el cliente HTTP común: prefijo `/api/v1`, sesiones, CSRF, respuesta 204 y errores. Las operaciones propias de cada funcionalidad viven en su `api.ts`.
-- La simulación permitirá verificar carga, listas vacías, errores por campo, falta de permisos y sesión vencida. Incluir roles iniciales para que membresías no dependa de la pantalla de creación de roles.
-- Al cambiar de negocio, limpiar selecciones y descartar respuestas pendientes del negocio anterior. Django seguirá siendo responsable de la autorización real.
-- La conexión posterior configurará el proxy de Vite y sustituirá la implementación simulada por HTTP, manteniendo las llamadas de las pantallas. El cierre de integración requiere validar con Django y PostgreSQL.
+- `mocks/services/` implementa sesión, consultas, altas, cambios de rol, paginación y errores. El JSON estático por sí solo no simula estas operaciones.
+- `api/client.ts` selecciona entre implementación simulada y HTTP con `VITE_API_MODE`, conservando firmas, respuestas y errores. No repartir comprobaciones de modo simulado por las pantallas. Documentar cómo persisten y se reinician los datos simulados.
+- `api/` contiene el cliente HTTP común: prefijo `/api/v1`, sesiones, CSRF, respuesta 204 y errores. Las operaciones propias de cada funcionalidad viven en su `api.ts`.
+- La simulación permite verificar carga, listas vacías, errores por campo, falta de permisos y sesión vencida. Incluir roles iniciales para que membresías no dependa de la pantalla de creación de roles.
+- Al cambiar de negocio, limpiar selecciones y descartar respuestas pendientes del negocio anterior. Django es responsable de la autorización real.
+- El proxy `/api` de Vite reenvía a Django en `127.0.0.1:8000` conservando el host. Activar `VITE_API_MODE=http` y reiniciar Vite. Las cuentas y datos del modo HTTP pertenecen a PostgreSQL; ver [README](README.md).
 
 ## Responsables y límites
 
@@ -90,7 +90,7 @@ npm.cmd run lint
 npm.cmd run build
 ```
 
-La pantalla de Vite fue sustituida por puntos de entrada pendientes. Las interfaces disponibles se describen a continuación.
+La pantalla inicial de Vite fue sustituida por las pantallas funcionales de fase 1. Las interfaces disponibles se describen a continuación.
 
 ## Base compartida implementada
 
@@ -102,13 +102,13 @@ Los tipos del contrato y sus solicitudes están en los módulos propietarios ind
 - `components/ui/TextField`: props nativas de input, `label`, `hint` y `errors: string[]`. Genera IDs únicos, vincula etiqueta y mensajes, y marca `aria-invalid`. Pasar `name`, `required` y `autoComplete` según el formulario. Tras validar, el formulario enfoca el primer campo inválido.
 - `components/feedback/Feedback`: `Loading`, `EmptyState`, `ErrorMessage` y `AccessDenied`. Los errores generales anuncian alertas; carga usa status. `AccessDenied` presenta el mensaje, sin implementar autorización.
 - `app/layouts/Layouts`: `LoginLayout`, `PlataformaLayout` y `NegocioLayout` reciben children; los paneles admiten navigation como ReactNode.
-- Cada módulo exporta su página desde `features/<modulo>/pages/index.tsx`: `AuthPage`, `NegociosPage`, `RolesPage` y `MembresiasPage`. Kelvin y Diana sustituyen el contenido de su página conservando esa exportación. No deben editar App.tsx, main.tsx ni app/routes.
-- Henry mantiene `app/routes/modules.ts`, el registro tipado `EntradaModulo` con id, label, path y Page. Las rutas actuales son `/`, `/plataforma`, `/negocio/roles` y `/negocio/membresias`. Son puntos de entrada pendientes, no flujos terminados. La navegación usa enlaces nativos; el servidor de producción deberá redirigir las rutas de la aplicación a index.html. Vite ya permite acceso directo en desarrollo.
-- Los futuros enlaces y comprobaciones de permisos se compondrán desde app/. Estas rutas todavía no tienen sesión ni protección. No muestran datos de negocio.
+- Cada módulo exporta su página desde `features/<modulo>/pages/index.tsx`: `AuthPage`, `NegociosPage`, `RolesPage` y `MembresiasPage`. Cada responsable mantiene el contenido de su página conservando esa exportación. No deben editar App.tsx, main.tsx ni app/routes.
+- Henry mantiene `app/routes/modules.ts`, el registro tipado `EntradaModulo` con id, label, path y Page. Las rutas actuales son `/`, `/plataforma`, `/negocio/roles` y `/negocio/membresias`. El router controla el acceso por sesión y códigos de permisos. La navegación usa enlaces internos; el servidor de producción deberá redirigir las rutas de la aplicación a index.html. Vite ya permite acceso directo en desarrollo.
+- Los enlaces y comprobaciones visuales de permisos se componen desde `app/`. El provider restaura la sesión y descarta respuestas del negocio anterior. La autorización de cada operación se realiza en Django.
 
-### Alcance pendiente
+### Estado de la fase 1
 
-La capa de datos ya está disponible: funciones públicas en `features/<modulo>/api.ts`, selección central en `api/client.ts`, transporte HTTP en `api/http.ts` y servicios simulados en `mocks/services/transport.ts`. Las firmas, escenarios y límites se documentan en [API.md](API.md). Las pantallas y el provider de sesión/negocio activo siguen pendientes. Los formularios mantendrán estado local y usarán señales de cancelación al cambiar de contexto.
+La capa de datos ya está disponible: funciones públicas en `features/<modulo>/api.ts`, selección central en `api/client.ts`, transporte HTTP en `api/http.ts` y servicios simulados en `mocks/services/transport.ts`. Las firmas, escenarios y límites se documentan en [API.md](API.md). Las pantallas y el provider están implementados. Los formularios mantienen estado local y usan cancelación al cambiar de contexto. Membresías consulta `roles/asignables/` con sus permisos de escritura, sin exigir `listar_roles`; el listado general conserva su permiso propio.
 
 ### Ejecución
 

@@ -167,6 +167,7 @@ try {
       [() => httpBusinesses.crearNegocio({ nombre: 'Tienda', tipo: 'tienda', administrador_id: 5 }), 'POST', '/plataforma/negocios/', { nombre: 'Tienda', tipo: 'tienda', administrador_id: 5 }],
       [() => httpRoles.listarPermisos(2), 'GET', '/negocios/2/permisos/?page=1'],
       [() => httpRoles.listarRoles(2), 'GET', '/negocios/2/roles/?page=1'],
+      [() => httpRoles.listarRolesAsignables(2), 'GET', '/negocios/2/roles/asignables/?page=1'],
       [() => httpRoles.crearRol(2, { nombre: 'Lector', permiso_ids: [5] }), 'POST', '/negocios/2/roles/', { nombre: 'Lector', permiso_ids: [5] }],
       [() => httpMemberships.listarMembresias(2), 'GET', '/negocios/2/membresias/?page=1'],
       [() => httpMemberships.crearMembresia(2, { username: 'existente', rol_id: 3 }), 'POST', '/negocios/2/membresias/', { username: 'existente', rol_id: 3 }],

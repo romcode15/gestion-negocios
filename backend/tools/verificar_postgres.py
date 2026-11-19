@@ -9,11 +9,53 @@ import socket
 import subprocess
 import sys
 import tempfile
+import time
+from urllib.error import URLError
+from urllib.request import urlopen
+
+
+def verificar_frontend(backend, env):
+    """Ejecuta los formularios React contra Django y el PostgreSQL temporal."""
+    frontend = backend.parent / "frontend"
+    if not (frontend / "node_modules" / "jsdom").is_dir():
+        raise RuntimeError("Ejecuta npm.cmd ci en frontend antes de la integración.")
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    env = dict(env, VITE_API_MODE="http", INTEGRACION_API_URL=f"http://127.0.0.1:{port}",
+               INTEGRACION_PASSWORD="Pruebas-" + secrets.token_urlsafe(24) + "!")
+    bootstrap = (
+        "import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings'); django.setup(); "
+        "from django.contrib.auth import get_user_model; from accesos.services import asignar_superadministrador; "
+        "usuario = get_user_model().objects.create_user(username='integracion_plataforma', "
+        "password=os.environ['INTEGRACION_PASSWORD']); asignar_superadministrador(usuario)"
+    )
+    subprocess.run([sys.executable, "-c", bootstrap], cwd=backend, env=env, check=True)
+    process = subprocess.Popen(
+        [sys.executable, "manage.py", "runserver", f"127.0.0.1:{port}", "--noreload"],
+        cwd=backend, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    try:
+        deadline = time.monotonic() + 20
+        while True:
+            try:
+                with urlopen(env["INTEGRACION_API_URL"] + "/api/v1/auth/csrf/", timeout=1):
+                    break
+            except (URLError, TimeoutError):
+                if process.poll() is not None or time.monotonic() >= deadline:
+                    raise RuntimeError("Django temporal no respondió para la integración.")
+                time.sleep(0.1)
+        subprocess.run(["node", "verificar-integracion.mjs"], cwd=frontend, env=env, check=True)
+    finally:
+        process.terminate()
+        process.wait(timeout=15)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pg-bin", type=Path, help="Directorio de initdb, pg_ctl y psql.")
+    parser.add_argument("--integracion-frontend", action="store_true",
+                        help="Después de los tests, probar los formularios React con HTTP real.")
     options = parser.parse_args()
     suffix = ".exe" if os.name == "nt" else ""
     executable = shutil.which("initdb")
@@ -65,6 +107,8 @@ def main():
             django("migrate", "--noinput")
             django("makemigrations", "--check", "--dry-run")
             django("test", "--noinput", "--verbosity", "2")
+            if options.integracion_frontend:
+                verificar_frontend(backend, env)
         finally:
             # Si start falla después de arrancar, detener también ese proceso.
             if started or (data / "postmaster.pid").exists():

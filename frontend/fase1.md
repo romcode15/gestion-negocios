@@ -34,6 +34,7 @@ en `snake_case` y los IDs como números.
 | `POST /plataforma/negocios/` | `{ nombre, tipo, administrador_id }` | `201` con `Negocio`. |
 | `GET /negocios/{negocio_id}/permisos/` | `page` opcional | Lista paginada de `Permiso`. |
 | `GET /negocios/{negocio_id}/roles/` | `page` opcional | Lista paginada de `Rol`. |
+| `GET /negocios/{negocio_id}/roles/asignables/` | `page` opcional | Lista paginada de `Rol` que el actor puede asignar. |
 | `POST /negocios/{negocio_id}/roles/` | `{ nombre, permiso_ids }` | `201` con `Rol`. |
 | `GET /negocios/{negocio_id}/membresias/` | `page` opcional | Lista paginada de `Membresia`. |
 | `POST /negocios/{negocio_id}/membresias/` | Cuenta nueva: `{ username, password, rol_id }`. Cuenta existente: `{ username, rol_id }`. | `201` con `Membresia`. |
@@ -74,6 +75,10 @@ un tipo distinto de la respuesta porque envía `administrador_id`.
   Django valida el acceso al ejecutar cada llamada.
 
 ### Sesión, errores e integración
+
+- Mostrar la creación de roles con `crear_rol` aunque no exista `listar_roles`; en ese caso no consultar ni mostrar el listado general.
+- El selector de membresías usa `roles/asignables/` con `crear_membresia` o `asignar_rol`, sin exigir `listar_roles`. Solo ofrece roles del negocio con permisos incluidos en los del actor. Los nombres de roles del listado general se consultan únicamente con `listar_roles`.
+- La simulación y Django rechazan asignar permisos superiores a los propios y quitar el rol al último Administrador de negocio activo. Para probar un cambio de rol propio permitido, preparar otro administrador activo. Mostrar los errores del servidor en `rol_id`.
 
 - Centralizar las llamadas HTTP en `src/api/`. En desarrollo, configurar
   Vite para reenviar `/api` a Django. El frontend usa rutas relativas.

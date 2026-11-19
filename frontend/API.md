@@ -2,9 +2,7 @@
 
 ## Estado y alcance
 
-Esta issue continúa sobre la base de #11 por indicación del equipo, aunque su revisión e integración en dev siguen pendientes. El PR debe declarar esa dependencia y actualizarse al integrar la base.
-
-No incorpora pantallas, providers de sesión ni autorización visual. No cambia backend. Las pruebas de HTTP sustituyen fetch; no demuestran integración real con Django/PostgreSQL.
+La fase 1 incluye funciones tipadas, simulación, transporte HTTP, provider de sesión/negocio y pantallas funcionales. Los tipos coinciden con [el contrato backend](../backend/Fase1.md). Las pruebas de `npm test` usan simulación o fetch sustituido; la comprobación integral con Django y PostgreSQL se ejecuta por separado según el README.
 
 ## Modo central
 
@@ -34,6 +32,7 @@ Todos los módulos usan los tipos únicos ya existentes. Los resultados son prom
 | `features/negocios/api` | `crearNegocio({ nombre, tipo, administrador_id }, opciones?): Promise<Negocio>` |
 | `features/roles/api` | `listarPermisos(negocioId, opciones?): Promise<Pagina<Permiso>>` |
 | `features/roles/api` | `listarRoles(negocioId, opciones?): Promise<Pagina<Rol>>` |
+| `features/roles/api` | `listarRolesAsignables(negocioId, opciones?): Promise<Pagina<Rol>>` |
 | `features/roles/api` | `crearRol(negocioId, { nombre, permiso_ids }, opciones?): Promise<Rol>` |
 | `features/membresias/api` | `listarMembresias(negocioId, opciones?): Promise<Pagina<Membresia>>` |
 | `features/membresias/api` | `crearMembresia(negocioId, { username, rol_id, password? }, opciones?): Promise<Membresia>` |
@@ -41,13 +40,15 @@ Todos los módulos usan los tipos únicos ya existentes. Los resultados son prom
 
 Para membresías, enviar password únicamente al crear cuenta nueva. La cuenta existente conserva su contraseña. Las respuestas nunca incluyen password. Kelvin puede consumir listarRoles sin esperar ninguna pantalla de Diana.
 
+`listarRolesAsignables()` consulta `GET /negocios/{negocio_id}/roles/asignables/` con `crear_membresia` o `asignar_rol`. Devuelve solo roles delegables del negocio, sin exigir `listar_roles`. Los selectores acumulan sus páginas; los nombres del listado de miembros pueden resolverse con el catálogo general únicamente si existe `listar_roles`. Cada mutación vuelve a validarse en Django.
+
 ## Sesión, CSRF y errores
 
 `iniciarSesion` obtiene CSRF antes de enviar credenciales. En HTTP, cada POST/PATCH lee de nuevo la cookie csrftoken y envía X-CSRFToken, con credentials=include. Así se respeta la rotación después del login. Un 204 devuelve undefined sin intentar parsear JSON.
 
 `ApiException` implementa `ApiError`: code, detail y errors (listas por campo). Su propiedad status es metadato del transporte, no un campo añadido a las respuestas del contrato. Errores de red usan network_error/status 0; respuesta ilegible usa invalid_response; HTTP sin el contrato usa http_error.
 
-Ante csrf_failed se obtiene de nuevo el token y se propaga el error. El consumidor ofrece reenvío manual; la mutación nunca se repite automáticamente. La futura sesión compartida deberá limpiar su estado ante not_authenticated. La pantalla manejará permission_denied, not_found y errors por campo. Cancelaciones conservan AbortError y no deben presentarse como fallo de API.
+Ante csrf_failed se obtiene de nuevo el token y se propaga el error. El consumidor ofrece reenvío manual; la mutación nunca se repite automáticamente. La sesión compartida limpia su estado ante not_authenticated. La pantalla maneja permission_denied, not_found y errors por campo. Cancelaciones conservan AbortError y no deben presentarse como fallo de API.
 
 ## Cancelación al cambiar de negocio
 
@@ -64,7 +65,7 @@ const siguiente = listarRoles(2, { signal: contexto.signal })
 // Limpiar selecciones y resultados anteriores desde el consumidor.
 ```
 
-Cada operación recibe el ID de negocio explícitamente. El mock valida permisos y membresía activa de ese ID; no mantiene una segunda selección global. El futuro provider compartirá la selección activa. Cancelar evita recibir respuestas del contexto anterior; no garantiza revertir una mutación que el servidor real ya haya confirmado.
+Cada operación recibe el ID de negocio explícitamente. El mock valida permisos y membresía activa de ese ID; no mantiene una segunda selección global. El provider comparte la selección activa. Cancelar evita recibir respuestas del contexto anterior; no garantiza revertir una mutación que el servidor real ya haya confirmado.
 
 ## Datos y persistencia simulados
 
@@ -84,11 +85,11 @@ Estas cuentas solo funcionan con `VITE_API_MODE=mock`; no son cuentas de Django/
 
 La contraseña es exclusivamente de demostración. El mock exige 8 caracteres al crear una cuenta; no reproduce todos los validadores de contraseñas de Django.
 
-Se validan unicidad de username, nombre de rol por negocio, membresía por usuario/negocio, pertenencia del rol y permisos delegables. El alta de negocio crea su rol administrador y membresía tras validar la entrada. El alta de cuenta y membresía valida todo antes de modificar las colecciones. La seguridad real depende de Django.
+Se validan unicidad de username, nombre de rol por negocio, membresía por usuario/negocio, pertenencia del rol y permisos delegables. Al crear o cambiar membresías se rechazan roles con permisos superiores a los del actor. No se puede degradar al último Administrador de negocio activo; una cuenta inactiva no cuenta como respaldo. El alta de negocio crea su rol administrador y membresía tras validar la entrada. El alta de cuenta y membresía valida todo antes de modificar las colecciones. La seguridad real depende de Django.
 
 ## Paginación
 
-Mock: tamaño fijo de **2**, orden ascendente por id (la semilla y las altas mantienen ese orden). Respuestas con count, next, previous y results; página fuera de rango devuelve not_found. Este tamaño y orden son una convención local pendiente de coordinación con backend, cuyos documentos no los fijan.
+Mock: tamaño fijo de **2**, orden ascendente por id (la semilla y las altas mantienen ese orden). Respuestas con count, next, previous y results; página fuera de rango devuelve not_found. Backend y simulación usan actualmente tamaño 2 y orden ascendente por ID, según el contrato de fase 1.
 
 Los enlaces next/previous usan el esquema no HTTP `mock:/api/v1/...`. No se deben pasar a fetch. Incrementar/decrementar page y volver a llamar la misma función tipada mientras next/previous no sea null. Esto permite pasar a Django sin cambiar firmas ni seguir enlaces simulados hacia un servidor.
 
@@ -134,7 +135,7 @@ npm.cmd run build
 
 verificar-api.mjs ejecuta las funciones públicas con mocks y prueba el transporte HTTP con fetch sustituido. Verifica payloads, 204, cookies, rotación de CSRF, errores, paginación, permisos, contexto, mutaciones, validaciones, altas conjuntas, cancelación y reinicio.
 
-No necesita Django. La integración real, las políticas finales de contraseña/paginación y el comportamiento del servidor ante cookies/CSRF quedan pendientes de comprobar con Django/PostgreSQL. No se han añadido ni validado pantallas en esta issue.
+`npm test` no necesita Django. Comprueba los formularios con DOM, las reglas del simulador y el transporte HTTP con fetch sustituido. Para comprobar las pantallas con solicitudes reales, ejecutar `tools/verificar_postgres.py --integracion-frontend` desde backend con las dependencias de frontend instaladas. La política completa de contraseñas sigue perteneciendo a Django.
 
 ## Pantallas de plataforma y membresías
 

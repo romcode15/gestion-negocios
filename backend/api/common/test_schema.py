@@ -34,10 +34,10 @@ class DocumentacionTests(SimpleTestCase):
             "/api/v1/auth/csrf/", "/api/v1/auth/login/", "/api/v1/auth/me/", "/api/v1/auth/logout/",
             "/api/v1/plataforma/usuarios/", "/api/v1/plataforma/negocios/",
             "/api/v1/negocios/{negocio_id}/membresias/",
-            "/api/v1/negocios/{negocio_id}/membresias/",
             "/api/v1/negocios/{negocio_id}/membresias/{membresia_id}/",
             "/api/v1/negocios/{negocio_id}/permisos/",
             "/api/v1/negocios/{negocio_id}/roles/",
+            "/api/v1/negocios/{negocio_id}/roles/asignables/",
         })
         components = schema["components"]["schemas"]
         request = components["CrearUsuarioRequest"]["properties"]
@@ -46,6 +46,17 @@ class DocumentacionTests(SimpleTestCase):
         self.assertEqual(set(components["Usuario"]["properties"]), {"id", "username", "is_active"})
         negocio = components["CrearNegocioRequest"]["properties"]
         self.assertEqual(set(negocio), {"nombre", "tipo", "administrador_id"})
+        alta = paths["/api/v1/negocios/{negocio_id}/membresias/"]["post"]
+        self.assertEqual(alta["requestBody"]["content"]["application/json"]["schema"]["$ref"],
+                         "#/components/schemas/CrearMembresiaRequest")
+        entrada = components["CrearMembresiaRequest"]
+        self.assertEqual(set(entrada["properties"]), {"username", "password", "rol_id"})
+        self.assertEqual(set(entrada["required"]), {"username", "rol_id"})
+        self.assertTrue(entrada["properties"]["password"]["writeOnly"])
+        self.assertEqual(alta["responses"]["201"]["content"]["application/json"]["schema"]["$ref"],
+                         "#/components/schemas/Membresia")
+        self.assertEqual(set(components["Membresia"]["properties"]),
+                         {"id", "usuario", "negocio_id", "rol_id", "activo"})
         self.assertEqual(paths["/api/v1/auth/login/"]["post"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
                          "#/components/schemas/Sesion")
         for url, method in (("/api/v1/auth/csrf/", "get"), ("/api/v1/auth/logout/", "post")):

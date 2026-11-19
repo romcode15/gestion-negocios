@@ -49,7 +49,9 @@ Expandir un endpoint, pulsar **Try it out**, completar el cuerpo si corresponde 
 2. Ejecutar POST /api/v1/auth/login/ con username y password de tu cuenta local. Debe devolver 200 con Sesion. No usar las cuentas de demostración de frontend: pertenecen únicamente a la simulación.
 3. Ejecutar GET /api/v1/auth/me/ para comprobar la sesión y permisos actuales.
 4. Probar GET/POST de usuarios y negocios según los permisos de la cuenta. Para crear un negocio, usar el ID de una cuenta activa existente como administrador_id.
-5. Ejecutar POST /api/v1/auth/logout/. Debe devolver 204. La siguiente consulta auth/me debe devolver 403 not_authenticated.
+5. Iniciar sesión como administrador de negocio para probar roles y membresías. `roles/asignables/` devuelve solo los roles delegables y requiere `crear_membresia` o `asignar_rol`. El listado general de roles requiere `listar_roles`; crear roles requiere únicamente `crear_rol`.
+6. Al incorporar miembros, enviar `password` solo para una cuenta nueva. La respuesta 201 es una `Membresia`, con usuario anidado. Probar un rol ajeno, un rol superior a los permisos del actor y la degradación del último administrador: deben rechazarse sin guardar cambios.
+7. Ejecutar POST /api/v1/auth/logout/. Debe devolver 204. La siguiente consulta auth/me debe devolver 403 not_authenticated.
 
 No necesitas pegar cookies en **Authorize**: la sesión se obtiene mediante login. El navegador conserva la cookie de sesión y Swagger lee la cookie CSRF actual antes de cada escritura, incluso después de la rotación del login. No se utiliza JWT ni se desactiva CSRF.
 
@@ -100,3 +102,11 @@ node tools/verificar_swagger.mjs
 ```
 
 El primer comando verifica migraciones y toda la suite en PostgreSQL temporal aislado. El segundo, opcional y con Node.js, comprueba el interceptor JavaScript de Swagger y la lectura del token rotado; no exige instalar paquetes npm ni abre un navegador.
+
+Para ejecutar también los formularios React con HTTP real, instalar primero las dependencias de frontend (`npm.cmd ci`) y ejecutar desde backend:
+
+```powershell
+.\.venv\Scripts\python.exe tools/verificar_postgres.py --integracion-frontend
+```
+
+La opción ejecuta las pruebas del backend y luego levanta Django y Vite en puertos temporales. Verifica los formularios con DOM automatizado contra PostgreSQL: cuentas, dos negocios, roles, altas de membresía, cambio de rol, último administrador, aislamiento, recarga y cierre de sesión. Usa cuentas y contraseña temporales; no modifica la base del `.env` ni abre un navegador. La revisión visual manual se realiza desde React en modo HTTP según el [README frontend](../frontend/README.md).

@@ -34,7 +34,7 @@ export interface EstadoRoles {
   paginaActual: number
   pendiente: boolean
   error: ApiException | null
-  puedeListar: boolean
+  puedeListar: boolean // Acceso al catálogo asignable mediante crear_membresia o asignar_rol.
   onPagina: (page: number) => void
   onReintentar: () => void
 }

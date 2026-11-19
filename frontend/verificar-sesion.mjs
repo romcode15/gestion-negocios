@@ -33,6 +33,9 @@ try {
   const roleEntry = modules.find((entry) => entry.id === 'roles')
   assert.equal(puedeAcceder(roleEntry, store.getSnapshot().sesion, 1), true)
   assert.equal(puedeAcceder(roleEntry, store.getSnapshot().sesion, 2), false)
+  const soloCrear = structuredClone(store.getSnapshot().sesion)
+  soloCrear.negocios[0].permisos = ['crear_rol']
+  assert.equal(puedeAcceder(roleEntry, soloCrear, 1), true)
   assert.throws(() => store.cambiarNegocio(999), (e) => e.code === 'permission_denied')
   let resolveOld
   let oldSignal

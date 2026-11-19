@@ -6,7 +6,7 @@ from api.common.access import permisos_delegables
 from api.common.permissions import TienePermisoNegocio
 from api.common.schema import ErrorSerializer
 
-from .selectors import roles_del_negocio
+from .selectors import roles_asignables, roles_del_negocio
 from .serializers import CrearRolSerializer, PermisoSerializer, RolSerializer
 
 
@@ -29,6 +29,28 @@ class PermisosDelegablesView(ListAPIView):
         if getattr(self, "swagger_fake_view", False):
             return Permiso.objects.none()
         return permisos_delegables(self.contexto_negocio)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Roles"], summary="Listar roles asignables",
+        description=(
+            "Requiere crear_membresia o asignar_rol. Devuelve roles del negocio activo "
+            "cuyos permisos están incluidos en los del actor, sin exigir listar_roles. "
+            "Cada escritura vuelve a validar la delegación y la conservación del último administrador."
+        ),
+        responses={200: RolSerializer(many=True), 403: ErrorSerializer, 404: ErrorSerializer},
+    ),
+)
+class RolesAsignablesView(ListAPIView):
+    permission_classes = [TienePermisoNegocio]
+    permisos_por_metodo = {"GET": ("crear_membresia", "asignar_rol")}
+    serializer_class = RolSerializer
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Rol.objects.none()
+        return roles_asignables(self.contexto_negocio)
 
 
 @extend_schema_view(

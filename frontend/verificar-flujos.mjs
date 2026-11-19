@@ -134,6 +134,10 @@ try {
   const ownRoleForm = row.querySelector('form')
   await change(ownRoleForm, 'rol_id', '4')
   await submit(ownRoleForm)
+  assert.match(ownRoleForm.textContent, /conservar un administrador activo/)
+  assert.ok((await auth.obtenerSesion()).negocios[0].permisos.includes('asignar_rol'))
+  await members.crearMembresia(1, { username: 'ui_respaldo', password: 'Respaldo-12345!', rol_id: 2 })
+  await submit(ownRoleForm)
   assert.doesNotMatch(document.body.textContent, /Incorporar miembro/)
   assert.doesNotMatch(document.body.textContent, /Guardar rol/)
   assert.ok(!(await auth.obtenerSesion()).negocios[0].permisos.includes('asignar_rol'))
@@ -165,6 +169,58 @@ try {
   await flush()
   assert.match(document.body.textContent, /Acceso a la plataforma/)
   assert.equal(document.querySelector('table'), null)
+
+  // Regresiones de permisos mínimos: se preparan los datos por la API, luego
+  // cada operación se ejecuta desde los formularios reales de React.
+  await auth.iniciarSesion({ username: 'ui_respaldo', password: 'Respaldo-12345!' })
+  const emptyRole = await roles.crearRol(1, { nombre: 'Vacío para pruebas de UI', permiso_ids: [] })
+  for (const [username, permiso_ids] of [
+    ['ui_creador_roles', [6]], ['ui_creador_miembros', [8]], ['ui_asignador', [7, 9]],
+  ]) {
+    const limited = await roles.crearRol(1, { nombre: username, permiso_ids })
+    await members.crearMembresia(1, { username, password: 'Demo-12345!', rol_id: limited.id })
+  }
+  await auth.cerrarSesion()
+  const requests = []
+  const beforeMinimalPermissions = mock.mockTransport.request
+  mock.mockTransport.request = async (options) => {
+    requests.push(options)
+    return beforeMinimalPermissions(options)
+  }
+  try {
+    await login('ui_creador_roles')
+    await go('/negocio/roles')
+    const roleForm = document.querySelector('form [name="nombre"]').closest('form')
+    assert.equal(document.querySelector('table'), null)
+    await change(roleForm, 'nombre', 'Creado sin listar roles')
+    await submit(roleForm)
+    assert.match(roleForm.textContent, /creado correctamente/)
+    assert.equal(requests.some((r) => r.method === 'GET' && r.path.includes('/roles/?')), false)
+    await click(button('Cerrar sesión'))
+
+    requests.length = 0
+    await login('ui_creador_miembros')
+    await go('/negocio/membresias')
+    await change(memberForm(), 'username', 'ui_miembro_sin_listar')
+    await change(memberForm(), 'password', 'Demo-12345!')
+    await change(memberForm(), 'rol_id', String(emptyRole.id))
+    await submit(memberForm())
+    assert.match(memberForm().textContent, /incorporado/)
+    assert.equal(requests.some((r) => r.path.includes('/roles/asignables/')), true)
+    assert.equal(requests.some((r) => r.method === 'GET' && r.path.includes('/roles/?')), false)
+    await click(button('Cerrar sesión'))
+
+    requests.length = 0
+    await login('ui_asignador')
+    await go('/negocio/membresias')
+    const target = [...document.querySelectorAll('tbody tr')].find((r) => r.textContent.includes('compartido'))
+    const changeForm = target.querySelector('form')
+    await change(changeForm, 'rol_id', String(emptyRole.id))
+    await submit(changeForm)
+    assert.match(document.body.textContent, /Rol de compartido actualizado/)
+    assert.equal(requests.some((r) => r.method === 'GET' && r.path.includes('/roles/?')), false)
+  } finally { mock.mockTransport.request = beforeMinimalPermissions }
+  console.log('OK DOM cierre fase 1: crear roles, incorporar miembros y cambiar roles sin listar_roles ni consultas prohibidas.')
   console.log('OK DOM #14: duplicado, contraseña inválida, selección automática, foco, envío único, paginación y fallo de red conservando entradas.')
   console.log('OK DOM #15: cambio de modo limpia contraseña/errores, dos modalidades, envío único, rol propio refresca permisos, cambio rápido de negocio y expiración.')
   console.log('OK integración dev: listado de roles, nombres de permisos, paginación compartida y catálogo restringido a crear_rol.')

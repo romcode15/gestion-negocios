@@ -51,6 +51,7 @@ nombres de campos en `snake_case` y barra final en las rutas.
 | `POST /plataforma/negocios/` | `{ nombre, tipo, administrador_id }` | `201` y objeto `Negocio`. |
 | `GET /negocios/{negocio_id}/permisos/` | `page` opcional | `200` y lista paginada de permisos delegables. |
 | `GET /negocios/{negocio_id}/roles/` | `page` opcional | `200` y lista paginada de roles. |
+| `GET /negocios/{negocio_id}/roles/asignables/` | `page` opcional | `200` y lista paginada de roles que el actor puede asignar. |
 | `POST /negocios/{negocio_id}/roles/` | `{ nombre, permiso_ids }` | `201` y objeto `Rol`. |
 | `GET /negocios/{negocio_id}/membresias/` | `page` opcional | `200` y lista paginada de membresías. |
 | `POST /negocios/{negocio_id}/membresias/` | Cuenta nueva: `{ username, password, rol_id }`. Cuenta existente: `{ username, rol_id }`. | `201` y objeto `Membresia`. |
@@ -95,6 +96,8 @@ Códigos base de permisos para esta entrega:
 El alta del negocio con su administrador usa `crear_negocio`. La consulta
 de permisos delegables usa `crear_rol`. Crear una cuenta al incorporar
 un miembro usa `crear_membresia` y se limita a ese flujo de negocio.
+
+Los permisos de cada acción son independientes: `crear_rol` no exige `listar_roles`. El catálogo de roles asignables requiere `crear_membresia` o `asignar_rol` y devuelve solo roles del negocio con permisos incluidos en los del actor. No habilita el listado general de roles ni el catálogo de permisos. Cada escritura vuelve a validar estas restricciones.
 
 ### Autenticación y errores
 

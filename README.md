@@ -84,7 +84,7 @@ Seguimos un **desarrollo iterativo e incremental** con un **tablero Kanban en Gi
 | Milestone | Agrupa los issues de una fase y permite seguir su avance. |
 | Issue | Describe una tarea, su responsable y sus criterios de aceptación. |
 | Tablero Kanban | Muestra el estado de cada tarea mediante **Pendiente → Listo → En progreso → En revisión → Terminado**. |
-| Pull request | Vincula los cambios con su issue y facilita la revisión antes de integrarlos en `main`. |
+| Pull request | Vincula los cambios con su issue y facilita la revisión antes de integrarlos en `dev`. |
 
 Usamos las etiquetas `backend`, `frontend`, `integración`, `documentación` y `bug` para identificar el tipo de trabajo.
 
@@ -92,9 +92,12 @@ Usamos las etiquetas `backend`, `frontend`, `integración`, `documentación` y `
 
 1. Se define el objetivo de la fase y se crea su milestone.
 2. Se crean los issues, se asignan responsables y se agregan las tareas al tablero.
-3. Cada integrante crea una rama para su issue a partir de `main` actualizada.
-4. Cuando los cambios están listos, el integrante abre un pull request hacia `main` y lo vincula con el issue. Para cerrar el issue al integrar el PR, puede usar `Closes #N`, donde `N` es su número.
-5. Después de la revisión y la integración, la tarea pasa a **Terminado**. Al cerrar la fase, el equipo verifica el flujo completo.
+3. Cada integrante actualiza `dev` y crea una rama propia para su issue.
+4. Cuando los cambios están listos, abre un pull request hacia `dev` y lo vincula con `Relacionado con #N`. Romel y Henry revisan e integran los cambios según su área.
+5. Después de integrar y verificar el cambio en `dev`, cierra el issue y pasa la tarea a **Terminado**. No depender del cierre automático de issues en un PR hacia `dev` mientras `main` sea la rama predeterminada.
+6. Al cerrar la fase, el equipo verifica el flujo completo. Romel coordina la entrega aprobada a `main`.
+
+Seguir la [guía de GitHub del equipo](guiagithub.md) para nombres de ramas, commits y plantilla del PR.
 
 ### Fases iniciales
 
@@ -144,6 +147,7 @@ Para PostgreSQL, selecciona **PostgreSQL Server** y **Command Line Tools** en el
 ```powershell
 git clone https://github.com/romcode15/gestion-negocios.git
 cd gestion-negocios
+git switch dev
 git status
 ```
 
@@ -235,5 +239,7 @@ npm.cmd ci
 npm.cmd run build
 npm.cmd run dev
 ```
+
+El frontend usa datos simulados por defecto. Para conectarlo con Django, configurar `VITE_API_MODE=http` en `frontend/.env.local` y reiniciar Vite. Las cuentas simuladas no existen en PostgreSQL. Consultar el [README del frontend](frontend/README.md) para preparar y probar ambos modos.
 
 Abre [http://localhost:5173/](http://localhost:5173/) o la URL que indique Vite. La instalación local queda verificada cuando las migraciones se aplican en PostgreSQL, Django responde y React compila y abre en el navegador. [Documentación de npm ci](https://docs.npmjs.com/cli/commands/npm-ci/)
