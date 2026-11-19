@@ -142,3 +142,125 @@ verificar-api.mjs ejecuta las funciones públicas con mocks y prueba el transpor
 Las pantallas de #14 y #15 consumen estas firmas. Componentes compartidos y contratos de contexto: [COMPONENTES.md](COMPONENTES.md). Ejecutar `npm.cmd test` para todas las comprobaciones automatizadas; la revisión visual y la integración real con Django/PostgreSQL se verifican por separado.
 
 Para simular cuentas inactivas: `configurarMocks({ usuariosInactivos: [5] })` marca la cuenta existente como inactiva hasta `reiniciarMocks()`. No cambia el contrato público de la API ni agrega campos a respuestas.
+
+## Fase 2: catálogo e inventario (#50)
+
+Los tipos pertenecen a `features/{categorias,productos,existencias,movimientos}/types.ts`;
+cada módulo expone sus servicios desde `api.ts`. Las respuestas, solicitudes de
+alta, PATCH, opciones y filtros tienen tipos separados. Los IDs y `version` son
+números; precios, cantidades y saldos son cadenas decimales; `creado_en` es texto ISO.
+Las páginas consumen estos servicios y no importan la semilla ni el transporte.
+
+Todas las rutas siguientes tienen el prefijo `/api/v1/negocios/{negocioId}`.
+Las listas reciben `(negocioId, { page?, signal?, ...filtros }?)` y devuelven
+`Promise<Pagina<T>>`. Los detalles reciben `(negocioId, id, { signal? }?)`;
+las escrituras `(negocioId, input, { signal? }?)`, salvo PATCH, que también recibe
+el ID antes de input. Las escrituras y detalles devuelven el recurso tipado.
+
+| Módulo | Funciones públicas | Ruta y filtros de listado |
+|---|---|---|
+| categorías | `listarCategorias`, `obtenerCategoria`, `crearCategoria`, `actualizarCategoria` | `/categorias/`, `search`, `activo`; detalle/PATCH `/{id}/` |
+| categorías | `listarCategoriasOpciones` | `/categorias/opciones/`, `search` |
+| productos | `listarProductos`, `obtenerProducto`, `crearProducto`, `actualizarProducto` | `/productos/`, `search`, `categoria_id`, `activo`; detalle/PATCH `/{id}/` |
+| productos | `listarProductosOpciones` | `/productos/opciones/`, `search` |
+| existencias | `listarExistencias`, `obtenerExistencia` | `/existencias/`, `search`, `categoria_id`, `activo`, `bajo_minimo`; detalle `/{producto_id}/` |
+| movimientos | `listarMovimientos`, `registrarMovimiento` | `/movimientos/`, `search`, `producto_id`, `tipo`, `desde`, `hasta` |
+| movimientos | `registrarAjuste` | POST `/ajustes/` |
+
+Los filtros se codifican con `URLSearchParams`; `desde` es inclusivo y `hasta`
+exclusivo, con fecha/hora y zona horaria. La simulación rechaza parámetros
+desconocidos, repetidos o inválidos. Las páginas contienen dos registros;
+catálogo se ordena por ID, existencias por producto e historial por fecha/ID
+descendentes. Sus enlaces `mock:` conservan filtros y no se envían a fetch.
+
+Las opciones de categorías requieren `crear_producto` o `editar_producto`;
+las de productos, `registrar_entrada`, `registrar_salida` o `ajustar_inventario`.
+El detalle de existencia acepta `consultar_existencias` o `ajustar_inventario`.
+Estos selectores no requieren permisos para los listados generales.
+
+### Decimales y operaciones reintentables
+
+`lib/decimales.ts` publica `aEnteroEscalado`, `formatearDecimal` y
+`normalizarDecimal`. Validan cadenas sin exponentes/comas, signo, rango,
+precisión y cantidades enteras cuando la unidad es `unidad`.
+Cantidad/stock: `{ escala: 3, precision: 14 }`; precio:
+`{ escala: 2, precision: 12 }`. `unidad` admite `unidad`, `kg` y `litro`.
+Los cálculos usan enteros escalados internamente y siempre devuelven cadenas
+al contrato; no se serializan bigint ni se calculan saldos con float.
+
+```ts
+import { normalizarDecimal } from './lib/decimales'
+import { crearOperacionInventario } from './api/operacionInventario'
+import { registrarMovimiento } from './features/movimientos/api'
+import type { RegistrarMovimientoSolicitud } from './features/movimientos/types'
+
+// Conservar una instancia por formulario, por ejemplo mediante useRef.
+const operacion = crearOperacionInventario<
+  Omit<RegistrarMovimientoSolicitud, 'clave_operacion'>
+>()
+const payload = operacion.preparar({
+  producto_id: 1,
+  tipo: 'entrada',
+  cantidad: normalizarDecimal('2', { escala: 3, precision: 14, unidad: 'unidad' }),
+  motivo: 'Recepción',
+})
+await registrarMovimiento(1, payload)
+operacion.nueva() // Solo después del éxito o al comenzar otra operación.
+```
+
+`generarClaveOperacion()` genera UUID con `crypto.randomUUID()`. `preparar`
+conserva UUID y una copia del payload para el reintento manual idéntico;
+cambiar datos genera otra clave. Conservar la instancia y los datos ante un
+fallo de red; limpiar al cambiar negocio/sesión. No hay reenvíos automáticos.
+
+La simulación compara actor y contenido normalizado por negocio/UUID:
+una repetición compatible devuelve el mismo movimiento y fecha con 201, sin
+afectar otra vez saldo o versión. Un contenido/actor incompatible devuelve
+`409`, `code: 'conflict'`, `errors: {}`. Un ajuste nuevo con versión obsoleta
+también devuelve 409; primero se resuelve la idempotencia de un reintento.
+El cliente común conserva ese error y ApiFeedback muestra su detalle.
+El consumidor puede recargar el saldo y pedir una nueva confirmación manual.
+
+### Semilla, aislamiento y límites
+
+Hay categorías/productos de dos negocios, incluyendo SKU iguales entre
+negocios, categoría y producto inactivos, existencias con versión e historial
+coherentes. La cuenta ficticia `inactivo` está deshabilitada y no inicia sesión.
+Los administradores de negocio reciben los once permisos nuevos (dieciséis en
+total); los roles limitados anteriores conservan sus permisos. Administrar la
+plataforma no concede acceso implícito a un negocio. Un negocio nuevo recibe
+su administrador con los nuevos permisos y catálogo vacío.
+
+`reiniciarMocks()` reinicia fase 1 y fase 2 juntas. `configurarMocks` conserva
+latencia, cancelación y escenarios previos; `conflict` fuerza un 409 en la
+siguiente solicitud. `empty` solo modifica la respuesta, sin borrar datos.
+Las escrituras validan una copia y solo la publican al terminar: los errores
+no dejan productos sin existencia, cambios parciales ni historial sin saldo.
+Las existencias no tienen POST/PATCH; solo cambian con movimientos y ajustes.
+No se permite desactivar categorías con productos activos ni cambiar unidad
+de productos con historial. Se comprueban pertenencia, actividad, stock
+insuficiente, precisión y versión antes de guardar.
+
+La simulación vive en memoria y serializa sus mutaciones en JavaScript; su
+comparación de contenido no implementa un hash criptográfico ni bloqueos de
+PostgreSQL. Esto permite desarrollar módulos sin backend y no acredita la
+integración ni concurrencia transaccional real de Django/PostgreSQL.
+
+### Verificación de fase 2
+
+```powershell
+npm.cmd run test:fase2
+npm.cmd test
+npm.cmd run lint
+npm.cmd run build
+```
+
+`verificar-fase2.mjs` comprueba validaciones, filtros/paginación, decimales,
+permisos mínimos, actor permitido/denegado, negocio ajeno, cancelación,
+idempotencia y conflictos de saldo/versión; compara saldo e historial tras
+errores para detectar cambios parciales. Los permisos nuevos se buscan por
+código, sin fijar sus IDs. `verificar-http-fase2.mjs` sustituye fetch para
+comprobar rutas, query strings, payloads, signal, CSRF y ausencia de reintentos.
+`npm.cmd test` incluye ambas pruebas y las regresiones de fase 1.
+Queda pendiente verificar estos endpoints contra Django/PostgreSQL mediante
+la entrega de integración F3; los resultados del mock no prueban persistencia real.

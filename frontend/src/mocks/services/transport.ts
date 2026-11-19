@@ -4,8 +4,9 @@ import type { Sesion } from '../../features/auth/types'
 import type { Usuario } from '../../features/usuarios/types'
 import type { Pagina } from '../../api/types'
 import { crearDatosIniciales, globalCodes } from '../data/seed'
+import { reiniciarFase2, resolverFase2 } from './fase2'
 
-type Scenario = 'normal' | 'empty' | 'validation_error' | 'invalid_credentials' | 'not_authenticated' | 'permission_denied' | 'csrf_failed' | 'not_found'
+type Scenario = 'normal' | 'empty' | 'validation_error' | 'invalid_credentials' | 'not_authenticated' | 'permission_denied' | 'csrf_failed' | 'not_found' | 'conflict'
 export const TAMANO_PAGINA = 2
 let data = crearDatosIniciales()
 let passwords = new Map(data.usuarios.map((u) => [u.username, 'Demo-12345!']))
@@ -28,6 +29,7 @@ let csrf = userId !== null
 let latency = 150
 let scenario: Scenario = 'normal'
 export function reiniciarMocks() {
+  reiniciarFase2()
   data = crearDatosIniciales()
   passwords = new Map(data.usuarios.map((u) => [u.username, 'Demo-12345!']))
   userId = null; csrf = false; latency = 150; scenario = 'normal'
@@ -118,7 +120,7 @@ function dispatch({ method, path, body }: ApiRequest): unknown {
     if (currentScenario === 'not_authenticated') { userId = null; rememberIdentity(null) }
     if (currentScenario === 'csrf_failed') csrf = false
     fail(currentScenario, 'Escenario simulado: ' + currentScenario,
-      ['validation_error', 'invalid_credentials'].includes(currentScenario) ? 400 : currentScenario === 'not_found' ? 404 : 403,
+      ['validation_error', 'invalid_credentials'].includes(currentScenario) ? 400 : currentScenario === 'not_found' ? 404 : currentScenario === 'conflict' ? 409 : 403,
       currentScenario === 'validation_error' ? { non_field_errors: ['Validación simulada.'] } : {})
   }
   if (route === '/auth/csrf/' && method === 'GET') { csrf = true; return undefined }
@@ -136,6 +138,14 @@ function dispatch({ method, path, body }: ApiRequest): unknown {
   if (route === '/auth/me/' && method === 'GET') return session()
   if (route === '/auth/logout/' && method === 'POST') { account(); userId = null; rememberIdentity(null); return undefined }
   account()
+  const fase2 = resolverFase2({ method, path, body }, {
+    usuario: account(), usuarios: data.usuarios, vacio: currentScenario === 'empty',
+    autorizar(codes, negocioId) {
+      const business = session().negocios.find((n) => n.id === negocioId)
+      if (!business || (codes.length > 0 && !codes.some((code) => business.permisos.includes(code)))) fail('permission_denied', 'No tienes permiso para realizar esta acción.', 403)
+    },
+  })
+  if (fase2.handled) return fase2.value
   const list = <T,>(items: T[]) => page(currentScenario === 'empty' ? [] : items, route, pageNumber)
   if (route === '/plataforma/usuarios/') {
     authorize(method === 'GET' ? 'listar_usuarios' : 'crear_usuario')

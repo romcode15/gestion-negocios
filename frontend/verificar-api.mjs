@@ -28,7 +28,7 @@ try {
   await error(() => auth.iniciarSesion({ username: 'plataforma', password: 'incorrecta' }), 'invalid_credentials')
   await login()
   const firstPage = await users.listarUsuarios()
-  assert.equal(firstPage.count, 5)
+  assert.equal(firstPage.count, 6)
   assert.equal(firstPage.results.length, 2)
   assert.match(firstPage.next, /^mock:/)
   assert.equal((await users.listarUsuarios({ page: 2 })).results[0].id, 3)
@@ -100,7 +100,7 @@ try {
   assert.equal(await auth.cerrarSesion(), undefined)
   reset()
   await login()
-  assert.equal((await users.listarUsuarios()).count, 5)
+  assert.equal((await users.listarUsuarios()).count, 6)
   console.log('OK mocks: lecturas, paginación, altas conjuntas, unicidad, membresías, aislamiento, permisos, escenarios, cancelación y reinicio.')
 
   const { httpTransport } = await load('api/http.ts')
