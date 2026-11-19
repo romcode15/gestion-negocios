@@ -8,6 +8,7 @@ import { ListaUsuarios } from '../../usuarios/components/ListaUsuarios'
 import { listarNegocios } from '../api'
 import { CrearNegocioForm } from '../components/CrearNegocioForm'
 import { ListaNegocios } from '../components/ListaNegocios'
+import { PageHeading } from '../../../components/ui/PageHeading'
 
 function NegociosRegistrados({ refresh }: { refresh: number }) {
   const [page, setPage] = useState(1)
@@ -27,7 +28,7 @@ export function NegociosPage() {
   const [refresh, setRefresh] = useState(0)
   function trasCrear() { setRefresh((version) => version + 1) }
   return <>
-    <h1>Panel de plataforma</h1>
+    <PageHeading title="Panel de plataforma" description="Administra tus negocios y las cuentas responsables de cada uno." />
     {puedeListar ? <NegociosRegistrados key={refresh} refresh={refresh} /> : <p role="note">No tienes permiso para listar negocios.</p>}
     {puedeCrear ? <CrearNegocioForm onCreado={trasCrear} /> : <ErrorMessage>No tienes permiso para crear negocios.</ErrorMessage>}
     {!puedeCrear && puedeListarUsuarios && <ListaUsuarios refresh={refresh} />}

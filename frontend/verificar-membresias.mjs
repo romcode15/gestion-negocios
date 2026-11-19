@@ -82,7 +82,7 @@ try {
   html = render(SelectorRoles, { estado: estadoRoles(true, [rol(2, 'Administrador de negocio'), rol(4, 'Consulta')]), value: 4, onSeleccionar() {} })
   assert.match(html, /Administrador de negocio/)
   assert.match(html, /Consulta/)
-  assert.match(html, /Página 1/)
+  assert.doesNotMatch(html, /Paginación|Página 1|Anterior|Siguiente/)
 
   const miembros = [membresia(1, usuario(2, 'admin_tienda'), 2), membresia(3, usuario(4, 'compartido'), 4, false)]
   const listaProps = {

@@ -5,10 +5,12 @@ import { TextField } from '../../../components/ui/TextField'
 import { Button } from '../../../components/ui/Button'
 import { ErrorMessage } from '../../../components/feedback/Feedback'
 import { ApiException, isAbortError } from '../../../api/errors'
+import { AssetIcon } from '../../../components/ui/AssetIcon'
 export function LoginForm() {
   const { pending, store } = useSesion()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [message, setMessage] = useState('')
   const submitting = useRef(false)
@@ -33,12 +35,14 @@ export function LoginForm() {
       } else setMessage('No se pudo iniciar sesión. Inténtalo de nuevo.')
     } finally { submitting.current = false }
   }
-  return <form ref={form} onSubmit={submit} noValidate aria-busy={pending}>
+  return <form ref={form} onSubmit={submit} noValidate aria-busy={pending} className="login-form">
     {message && <ErrorMessage>{message}</ErrorMessage>}
     <fieldset disabled={pending}>
       <TextField name="username" label="Nombre de usuario" autoComplete="username" required value={username} errors={errors.username} onChange={(e) => setUsername(e.target.value)} />
-      <TextField name="password" label="Contraseña" type="password" autoComplete="current-password" required value={password} errors={errors.password} onChange={(e) => setPassword(e.target.value)} />
-      <Button type="submit" pending={pending} pendingLabel="Ingresando…">Ingresar</Button>
+      <div className="login-password"><TextField name="password" label="Contraseña" type={showPassword ? 'text' : 'password'} autoComplete="current-password" required value={password} errors={errors.password} onChange={(e) => setPassword(e.target.value)} />
+        <button className="login-password-toggle" type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={showPassword} onClick={() => setShowPassword((value) => !value)}><AssetIcon name={showPassword ? 'hidePassword' : 'showPassword'} /></button>
+      </div>
+      <Button type="submit" pending={pending} pendingLabel="Ingresando…" className="login-submit">Ingresar <span aria-hidden="true">→</span></Button>
     </fieldset>
   </form>
 }

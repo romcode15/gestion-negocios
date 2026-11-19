@@ -12,6 +12,7 @@ import { ListaMembresias } from '../components/ListaMembresias'
 import { conRoles, opcionesDeRoles } from '../seleccion'
 import type { EstadoRoles } from '../seleccion'
 import type { Membresia } from '../types'
+import { PageHeading } from '../../../components/ui/PageHeading'
 
 const paginaVaciaMembresias: Pagina<Membresia> = { count: 0, next: null, previous: null, results: [] }
 const paginaVaciaRoles: Pagina<Rol> = { count: 0, next: null, previous: null, results: [] }
@@ -23,8 +24,6 @@ export function MembresiasPage() {
   const puedeAsignar = usePermiso('asignar_rol')
   const puedeListarRoles = usePermiso('listar_roles')
   const [page, setPage] = useState(1)
-  const [paginaRoles, setPaginaRoles] = useState(1)
-  const [rolesPaginas, setRolesPaginas] = useState<Record<number, Rol>>({})
   const [mensaje, setMensaje] = useState('')
 
   // Sin permiso o sin negocio activo no se lanza ninguna consulta de contexto.
@@ -47,14 +46,6 @@ export function MembresiasPage() {
   }, [puedeConsultarAsignables, negocioId])
   const consultaAsignables = useConsultaContexto(cargarAsignables)
 
-  // Los roles de las páginas ya visitadas se conservan para resolver nombres
-  // y mantener la selección al paginar. Un cambio de negocio remonta la página.
-  function irAPaginaRoles(nueva: number) {
-    const actuales = consultaAsignables.data?.[paginaRoles - 1]
-    if (actuales) setRolesPaginas((actual) => conRoles(actual, actuales.results))
-    setPaginaRoles(nueva)
-  }
-
   const rolesPorId = useMemo(
     () => conRoles({}, [...(consultaRoles.data?.flatMap((pagina) => pagina.results) ?? []),
       ...(consultaAsignables.data?.flatMap((pagina) => pagina.results) ?? [])]),
@@ -62,19 +53,17 @@ export function MembresiasPage() {
   )
   const catalogoAsignable = useMemo(() => consultaAsignables.data?.flatMap((pagina) => pagina.results) ?? [], [consultaAsignables.data])
   const opcionesRoles = useMemo(
-    () => opcionesDeRoles(rolesPaginas, consultaAsignables.data?.[paginaRoles - 1]?.results ?? [], negocioId),
-    [rolesPaginas, consultaAsignables.data, paginaRoles, negocioId],
+    () => opcionesDeRoles({}, catalogoAsignable, negocioId),
+    [catalogoAsignable, negocioId],
   )
 
   const estadoRoles: EstadoRoles = {
     catalogo: catalogoAsignable,
     opciones: opcionesRoles,
-    pagina: consultaAsignables.data?.[paginaRoles - 1] ?? null,
-    paginaActual: paginaRoles,
+    pagina: consultaAsignables.data?.[0] ?? null,
     pendiente: consultaAsignables.pending,
     error: consultaAsignables.error,
     puedeListar: puedeConsultarAsignables,
-    onPagina: irAPaginaRoles,
     onReintentar: consultaAsignables.reintentar,
   }
 
@@ -99,7 +88,7 @@ export function MembresiasPage() {
   }
 
   return <>
-    <h1>Membresías del negocio</h1>
+    <PageHeading title="Membresías del negocio" description="Administra las cuentas de tu equipo y asigna los roles de este negocio." />
     {mensaje && <p role="status">{mensaje}</p>}
     {negocioId === null && <p className="feedback" role="note">Selecciona un negocio activo para ver sus membresías.</p>}
     {!puedeListar && <AccessDenied />}

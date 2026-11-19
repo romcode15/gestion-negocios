@@ -6,7 +6,7 @@ import { Button } from '../../../components/ui/Button'
 export function AuthPage() {
   const { error, logoutUnconfirmed, store } = useSesion()
   return <LoginLayout>
-    {error && <ApiFeedback error={error} />}
+    {error && error.code !== 'not_authenticated' && <ApiFeedback error={error} />}
     {logoutUnconfirmed && <div className="feedback"><p>La sesión local se limpió, pero el servidor no confirmó el cierre. Reintenta cerrarla.</p><Button onClick={() => void store.logout()}>Reintentar cierre de sesión</Button></div>}
     <LoginForm />
   </LoginLayout>
