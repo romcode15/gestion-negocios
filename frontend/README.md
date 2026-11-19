@@ -1,34 +1,86 @@
-# React + TypeScript + Vite
+# Frontend · Gestión de Negocios
 
-La organización del proyecto, los responsables y la ubicación de cada archivo se describen en [Estructura de desarrollo](ESTRUCTURA.md). Consultar también la [guía de fase 1](fase1.md) antes de implementar un issue. El resto de este archivo corresponde a la plantilla inicial de Vite.
+Aplicación de fase 1 con React, TypeScript y Vite: inicio y cierre de sesión, selección de negocio, usuarios y negocios de plataforma, roles, permisos y membresías.
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+## Preparar el entorno
 
-Currently, two official plugins are available:
+Desde la raíz del repositorio, guardar los cambios de otra tarea en su rama antes de actualizar:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```powershell
+git switch dev
+git pull --ff-only origin dev
+cd frontend
+npm.cmd ci
+if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
+npm.cmd run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Abrir la URL que indique Vite, normalmente `http://localhost:5173`. Reiniciar Vite después de cambiar `.env.local`. Este archivo es local y no se sube al repositorio.
+
+## Modo simulado
+
+Configurar en `.env.local`:
+
+```dotenv
+VITE_API_MODE=mock
+```
+
+Es el modo predeterminado; no requiere Django. Usar `plataforma`, `admin_tienda`, `admin_ferreteria`, `compartido` o `existente`, con contraseña ficticia `Demo-12345!`. Estas cuentas solo pertenecen al simulador.
+
+Las altas y cambios se mantienen en memoria hasta recargar. Solo se conserva la identidad ficticia de una cuenta inicial en sessionStorage, sin contraseñas ni tokens. Para reiniciar datos, recargar o llamar `reiniciarMocks()`. Escenarios de errores y limitaciones: [API.md](API.md).
+
+## Conectar con Django
+
+1. Preparar PostgreSQL, el backend y la cuenta inicial según el [README principal](../README.md) y el [README backend](../backend/README.md). Ejecutar `preparar_accesos` para asignar el rol de plataforma.
+2. Dejar Django funcionando en `http://127.0.0.1:8000`.
+3. Cambiar `.env.local` a `VITE_API_MODE=http` y reiniciar Vite.
+4. Abrir React e iniciar sesión con la cuenta real creada en Django.
+
+El proxy de Vite reenvía `/api` a Django. Mantener el mismo hostname en React durante la sesión; las llamadas usan rutas relativas y cookies. El cliente obtiene CSRF antes del login y lee el token actual en cada escritura. Ante un error CSRF, permite repetir el envío manualmente.
+
+En este modo las operaciones guardan datos reales en la base configurada en backend. Las credenciales y altas del simulador no se trasladan a PostgreSQL.
+
+## Permisos de las pantallas
+
+| Acción | Permiso |
+|---|---|
+| Listar negocios o usuarios | `listar_negocios` o `listar_usuarios`, respectivamente |
+| Crear negocio o usuario | `crear_negocio` o `crear_usuario`, respectivamente |
+| Listar roles | `listar_roles` |
+| Crear rol y consultar permisos delegables | `crear_rol`, sin exigir `listar_roles` |
+| Listar miembros | `listar_membresias` |
+| Incorporar miembro | `crear_membresia` |
+| Cambiar el rol de un miembro | `asignar_rol`; la tabla que permite elegir al miembro requiere `listar_membresias` |
+| Consultar opciones de rol para membresías | `crear_membresia` o `asignar_rol`, sin exigir `listar_roles` |
+
+El selector de membresías consulta `roles/asignables/`: solo ofrece roles del negocio con permisos incluidos en los del actor. Django vuelve a validar cada escritura y protege al último Administrador de negocio activo. Para probar una degradación propia permitida, debe existir otro administrador activo.
+
+## Verificar los cambios
+
+Desde frontend:
+
+```powershell
+npm.cmd run lint
+npm.cmd run build
+npm.cmd test
+```
+
+Las pruebas incluyen funciones de API, sesión, rutas, formularios, paginación, cancelación, errores y restricciones del simulador. Las pruebas HTTP de esta suite sustituyen fetch y no reemplazan la integración con Django.
+
+Para ejecutar las pantallas de React mediante DOM con HTTP real y PostgreSQL temporal, desde backend:
+
+```powershell
+.\.venv\Scripts\python.exe tools/verificar_postgres.py --integracion-frontend
+```
+
+Se necesitan las dependencias de ambos proyectos y PostgreSQL disponible. El comando aplica migraciones, ejecuta las pruebas del backend y el flujo de frontend contra un servidor Django y una base temporales; no usa la base de `.env`. Usa un DOM automatizado, sin abrir un navegador.
+
+Para una revisión visual manual, usar modo HTTP: crear una cuenta administradora y dos negocios desde plataforma; iniciar sesión como administrador; crear un rol, incorporar una cuenta existente y otra nueva; comprobar errores de permisos, último administrador, recarga, cambio de negocio y cierre de sesión.
+
+## Documentación y trabajo en equipo
+
+- [Fase 1](fase1.md): contrato y criterios.
+- [Estructura](ESTRUCTURA.md): módulos y responsabilidades.
+- [API](API.md): firmas, simulación y transporte HTTP.
+- [Componentes](COMPONENTES.md): interfaces compartidas.
+- [Guía de GitHub](../guiagithub.md): una rama por issue desde `dev`, PR hacia `dev` y revisión del equipo.

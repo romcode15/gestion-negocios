@@ -1,6 +1,16 @@
 # Base de API y seguridad · Issue #5
 
-La base de #5 habilita autenticación y componentes comunes; #6 incorpora los endpoints de plataforma descritos al final. Roles y membresías se implementarán en #7 a #10; sus archivos urls.py ya están incluidos, con listas de rutas vacías.
+La fase 1 incluye autenticación, usuarios y negocios de plataforma, roles, permisos y membresías. Las rutas están implementadas y comparten las reglas de sesión, autorización, errores y paginación descritas aquí. El contrato completo se mantiene en [Fase1.md](Fase1.md) y se puede explorar desde Swagger.
+
+## Roles y membresías
+
+- `GET /negocios/{negocio_id}/roles/` requiere `listar_roles`.
+- `POST /negocios/{negocio_id}/roles/` y `GET /negocios/{negocio_id}/permisos/` requieren `crear_rol`, independientemente de `listar_roles`.
+- `GET /negocios/{negocio_id}/roles/asignables/` requiere `crear_membresia` **o** `asignar_rol`. Devuelve `Rol` paginado, solo del negocio activo y con permisos incluidos en los del actor; incluye roles vacíos. No da acceso al listado general ni al catálogo de permisos. El selector de membresías consume esta consulta.
+- `GET /negocios/{negocio_id}/membresias/` requiere `listar_membresias`; `POST` requiere `crear_membresia`. El alta recibe `{ username, rol_id, password? }` y devuelve `201` con `{ id, usuario, negocio_id, rol_id, activo }`.
+- `PATCH /negocios/{negocio_id}/membresias/{membresia_id}/` requiere `asignar_rol` y devuelve la membresía actualizada. La escritura vuelve a comprobar delegación y conservación del último Administrador de negocio activo bajo bloqueo.
+
+Todas estas rutas usan el prefijo `/api/v1`, sesión y contexto autorizado. Las escrituras requieren CSRF. Consultar una opción asignable no garantiza que una escritura posterior siga autorizada: el servidor valida el estado actual al guardar.
 
 ## Autenticación
 
@@ -154,7 +164,7 @@ Desde backend:
 .\.venv\Scripts\python.exe tools/verificar_postgres.py
 ```
 
-El script aplica las migraciones desde cero, verifica check y ausencia de migraciones pendientes y ejecuta toda la suite, sin modificar la base habitual. La prueba del proxy comprueba cookies, host y Origin en el cliente HTTP de Django; la integración visual desde React se validará en su entrega de integración.
+El script aplica las migraciones desde cero, verifica check y ausencia de migraciones pendientes y ejecuta toda la suite, sin modificar la base habitual. Con `--integracion-frontend` ejecuta también los formularios React con DOM y HTTP real mediante el proxy de Vite. La revisión visual en navegador se realiza en modo HTTP según el README frontend.
 
 ## API de plataforma · Issue #6
 
@@ -208,4 +218,4 @@ Para probar manualmente el flujo: preparar catálogo y cuenta de plataforma seg�
 
 Para pruebas automatizadas independientes, Sebastián y Diego usan crear_contexto_negocio o crear_dos_negocios de tests/support/factories.py. Esas fábricas preparan modelos directamente en la base de pruebas y no dependen de estos endpoints ni de los de otro compañero.
 
-La suite en api/plataforma/tests/test_platform.py verifica creación, lectura paginada, permisos independientes, validación de campos, CSRF, ausencia de hashes, inicialización de dos negocios, revalidación del administrador y rollback. Comprueba además un duplicado concurrente con conexiones reales separadas. La integración visual de estas operaciones desde React sigue correspondiendo a su entrega de integración.
+La suite en api/plataforma/tests/test_platform.py verifica creación, lectura paginada, permisos independientes, validación de campos, CSRF, ausencia de hashes, inicialización de dos negocios, revalidación del administrador y rollback. Comprueba además un duplicado concurrente con conexiones reales separadas. La prueba `frontend/verificar-integracion.mjs` usa los formularios React contra Django y PostgreSQL temporales mediante la opción `--integracion-frontend` del verificador.

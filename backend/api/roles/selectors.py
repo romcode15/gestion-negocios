@@ -1,6 +1,6 @@
 from django.db.models import Prefetch
 
-from accesos.models import Rol, RolPermiso
+from accesos.models import Permiso, Rol, RolPermiso
 
 
 def roles_del_negocio(contexto):
@@ -16,3 +16,12 @@ def roles_del_negocio(contexto):
         ))
         .order_by("id")
     )
+
+
+def roles_asignables(contexto):
+    """Solo roles del negocio cuyos permisos son un subconjunto de los del actor."""
+    no_delegables = RolPermiso.objects.exclude(
+        permiso__ambito=Permiso.Ambito.NEGOCIO,
+        permiso__codigo__in=contexto.permisos,
+    )
+    return roles_del_negocio(contexto).exclude(pk__in=no_delegables.values("rol_id"))

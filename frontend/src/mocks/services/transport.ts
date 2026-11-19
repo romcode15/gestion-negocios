@@ -164,6 +164,13 @@ function dispatch({ method, path, body }: ApiRequest): unknown {
       return negocio
     }
   }
+  const assignableMatch = route.match(/^\/negocios\/(\d+)\/roles\/asignables\/$/)
+  if (assignableMatch && method === 'GET') {
+    const negocioId = Number(assignableMatch[1])
+    const allowed = session().negocios.find((n) => n.id === negocioId)?.permisos
+    if (!allowed?.some((code) => ['crear_membresia', 'asignar_rol'].includes(code))) fail('permission_denied', 'No tienes permiso para realizar esta acción.', 403)
+    return list(data.roles.filter((r) => r.negocio_id === negocioId && codes(r.id).every((code) => allowed.includes(code))))
+  }
   const match = route.match(/^\/negocios\/(\d+)\/(permisos|roles|membresias)\/(?:(\d+)\/)?$/)
   if (match) {
     const negocioId = Number(match[1]), resource = match[2], membershipId = match[3] ? Number(match[3]) : undefined
@@ -187,10 +194,17 @@ function dispatch({ method, path, body }: ApiRequest): unknown {
     if (resource === 'membresias') {
       if (method === 'GET' && membershipId === undefined) return list(data.membresias.filter((m) => m.negocio_id === negocioId))
       const input = bodyRecord(body), roleId = id(input, 'rol_id')
-      if (!data.roles.some((r) => r.id === roleId && r.negocio_id === negocioId)) return validation('rol_id', 'Selecciona un rol del negocio activo.')
+      const role = data.roles.find((r) => r.id === roleId && r.negocio_id === negocioId)
+      if (!role) return validation('rol_id', 'Selecciona un rol del negocio activo.')
+      if (!codes(roleId).every((code) => allowed.includes(code))) return validation('rol_id', 'No puedes asignar un rol con permisos que no posees.')
       if (method === 'PATCH' && membershipId !== undefined) {
         const membership = data.membresias.find((m) => m.id === membershipId && m.negocio_id === negocioId)
         if (!membership) return fail('not_found', 'Membresía no disponible.', 404)
+        const isAdmin = (id: number) => data.roles.some((r) => r.id === id && r.predefinido && r.nombre === 'Administrador de negocio')
+        if (membership.activo && membership.usuario.is_active && isAdmin(membership.rol_id) && !isAdmin(roleId)) {
+          const otherAdmin = data.membresias.some((m) => m.id !== membership.id && m.negocio_id === negocioId && m.activo && m.usuario.is_active && isAdmin(m.rol_id))
+          if (!otherAdmin) return validation('rol_id', 'El negocio debe conservar un administrador activo.')
+        }
         membership.rol_id = roleId; return membership
       }
       if (method === 'POST' && membershipId === undefined) {

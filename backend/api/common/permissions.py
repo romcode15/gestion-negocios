@@ -34,7 +34,11 @@ class TienePermisoGlobal(BasePermission):
 class TienePermisoNegocio(BasePermission):
     def has_permission(self, request, view):
         exigir_usuario_activo(request.user)
+        requerido = _permiso_requerido(view, request.method)
         view.contexto_negocio = resolver_contexto_negocio(
-            request.user, view.kwargs["negocio_id"], _permiso_requerido(view, request.method),
+            request.user, view.kwargs["negocio_id"], requerido if isinstance(requerido, str) else None,
         )
+        # Una tupla declara alternativas; no concede los demás permisos de lectura.
+        if not isinstance(requerido, str) and not view.contexto_negocio.permisos.intersection(requerido):
+            raise PermissionDenied()
         return True

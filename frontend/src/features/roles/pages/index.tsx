@@ -21,17 +21,17 @@ export function RolesPage() {
       <h1>Roles del negocio</h1>
       {negocioId === null ? (
         <EmptyState title="Sin negocio activo">Selecciona un negocio para ver sus roles.</EmptyState>
-      ) : !puedeListar ? (
+      ) : !puedeListar && !puedeCrear ? (
         <AccessDenied />
       ) : (
         // key={negocioId}: al cambiar de negocio se borra el formulario, las opciones y los errores
         <div key={negocioId}>
           {puedeCrear && <CrearRolForm onCreado={() => setRefresco((n) => n + 1)} />}
-          {puedeCrear ? (
+          {puedeListar && (puedeCrear ? (
             <RolesConNombres key={refresco} />
           ) : (
             <TablaRoles key={refresco} nombres={null} />
-          )}
+          ))}
         </div>
       )}
     </section>

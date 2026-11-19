@@ -4,7 +4,7 @@ import { usePermiso, useSesion } from '../../../app/providers/SessionContext'
 import type { ContextoConsulta } from '../../../app/providers/useConsultaContexto'
 import { useConsultaContexto } from '../../../app/providers/useConsultaContexto'
 import { AccessDenied } from '../../../components/feedback/Feedback'
-import { cargarPaginasRoles } from '../catalogo'
+import { cargarPaginasRoles, cargarPaginasRolesAsignables } from '../catalogo'
 import type { Rol } from '../../roles/types'
 import { listarMembresias } from '../api'
 import { CrearMembresiaForm } from '../components/CrearMembresiaForm'
@@ -40,34 +40,42 @@ export function MembresiasPage() {
 
   const consultaMembresias = useConsultaContexto(cargarMembresias)
   const consultaRoles = useConsultaContexto(cargarRoles)
+  const puedeConsultarAsignables = puedeCrear || puedeAsignar
+  const cargarAsignables = useCallback(({ signal }: ContextoConsulta) => {
+    if (!puedeConsultarAsignables || negocioId === null) return Promise.resolve([paginaVaciaRoles])
+    return cargarPaginasRolesAsignables(negocioId, signal)
+  }, [puedeConsultarAsignables, negocioId])
+  const consultaAsignables = useConsultaContexto(cargarAsignables)
 
   // Los roles de las páginas ya visitadas se conservan para resolver nombres
   // y mantener la selección al paginar. Un cambio de negocio remonta la página.
   function irAPaginaRoles(nueva: number) {
-    const actuales = consultaRoles.data?.[paginaRoles - 1]
+    const actuales = consultaAsignables.data?.[paginaRoles - 1]
     if (actuales) setRolesPaginas((actual) => conRoles(actual, actuales.results))
     setPaginaRoles(nueva)
   }
 
   const rolesPorId = useMemo(
-    () => conRoles({}, consultaRoles.data?.flatMap((pagina) => pagina.results) ?? []),
-    [consultaRoles.data],
+    () => conRoles({}, [...(consultaRoles.data?.flatMap((pagina) => pagina.results) ?? []),
+      ...(consultaAsignables.data?.flatMap((pagina) => pagina.results) ?? [])]),
+    [consultaRoles.data, consultaAsignables.data],
   )
+  const catalogoAsignable = useMemo(() => consultaAsignables.data?.flatMap((pagina) => pagina.results) ?? [], [consultaAsignables.data])
   const opcionesRoles = useMemo(
-    () => opcionesDeRoles(rolesPaginas, consultaRoles.data?.[paginaRoles - 1]?.results ?? [], negocioId),
-    [rolesPaginas, consultaRoles.data, paginaRoles, negocioId],
+    () => opcionesDeRoles(rolesPaginas, consultaAsignables.data?.[paginaRoles - 1]?.results ?? [], negocioId),
+    [rolesPaginas, consultaAsignables.data, paginaRoles, negocioId],
   )
 
   const estadoRoles: EstadoRoles = {
-    catalogo: Object.values(rolesPorId),
+    catalogo: catalogoAsignable,
     opciones: opcionesRoles,
-    pagina: consultaRoles.data?.[paginaRoles - 1] ?? null,
+    pagina: consultaAsignables.data?.[paginaRoles - 1] ?? null,
     paginaActual: paginaRoles,
-    pendiente: consultaRoles.pending,
-    error: consultaRoles.error,
-    puedeListar: puedeListarRoles,
+    pendiente: consultaAsignables.pending,
+    error: consultaAsignables.error,
+    puedeListar: puedeConsultarAsignables,
     onPagina: irAPaginaRoles,
-    onReintentar: consultaRoles.reintentar,
+    onReintentar: consultaAsignables.reintentar,
   }
 
   function refrescar() {

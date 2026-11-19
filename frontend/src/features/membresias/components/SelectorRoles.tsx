@@ -10,7 +10,7 @@ export function SelectorRoles({ estado, value, onSeleccionar, errors = [], disab
   const seleccionado = estado.catalogo?.find((rol) => rol.id === value)
   const disponibles = seleccionado && !opciones.some((rol) => rol.id === value) ? [...opciones, seleccionado] : opciones
   return <div className="selector-roles">
-    {!puedeListar && <p className="feedback" role="note">No tienes permiso para listar los roles del negocio. No se lanza la consulta ni se habilita la asignación. Coordina con Henry y Romel si el flujo necesita otra decisión de contrato.</p>}
+    {!puedeListar && <p className="feedback" role="note">No tienes permiso para consultar los roles asignables.</p>}
     {puedeListar && <>{pendiente && <Loading>Cargando roles…</Loading>}
       {!pendiente && error && <ApiFeedback error={error} onRetry={onReintentar} />}
       {!pendiente && !error && pagina?.count === 0 && <EmptyState title="No hay roles" />}</>}

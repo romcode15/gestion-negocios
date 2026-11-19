@@ -74,7 +74,7 @@ try {
   })
 
   let html = render(SelectorRoles, { estado: estadoRoles(false), value: null, onSeleccionar() {} })
-  assert.match(html, /No tienes permiso para listar los roles/)
+  assert.match(html, /No tienes permiso para consultar los roles asignables/)
   assert.match(html, /name="rol_id"[^>]*disabled/)
   assert.doesNotMatch(html, /Cargando roles/)
   html = render(SelectorRoles, { estado: { ...estadoRoles(true), pendiente: true }, value: null, onSeleccionar() {} })
@@ -111,7 +111,7 @@ try {
   assert.match(html, /name="password"/)
   assert.match(html, /autocomplete="new-password"/i)
   assert.match(html, /name="modo"/)
-  assert.match(html, /No tienes permiso para listar los roles/)
+  assert.match(html, /No tienes permiso para consultar los roles asignables/)
   assert.equal((html.match(/<form /g) || []).length, 1)
 
   html = render(MembresiasPage, {}, ['listar_membresias'])
@@ -121,7 +121,8 @@ try {
   html = render(MembresiasPage, {}, ['listar_membresias', 'crear_membresia', 'asignar_rol'])
   assert.match(html, /Incorporar miembro/)
   assert.match(html, /Cargando membresías/)
-  assert.match(html, /No tienes permiso para listar los roles/)
+  assert.match(html, /Cargando roles/)
+  assert.doesNotMatch(html, /No tienes permiso para consultar los roles asignables/)
   console.log('OK render: tabla con username/rol/estado, estados de carga y vacío, permisos por acción y modos del formulario.')
 
   // --- Operaciones con mocks: mutaciones y lecturas posteriores ---
@@ -210,6 +211,10 @@ try {
   await login('admin_tienda')
   await error(() => membresias.crearMembresia(1, { username: 'compartido', rol_id: 4 }), 'validation_error', 'username')
   const propia = (await membresias.listarMembresias(1)).results.find((m) => m.usuario.username === 'admin_tienda')
+  await error(() => membresias.cambiarRolMembresia(1, propia.id, { rol_id: 4 }), 'validation_error', 'rol_id')
+  assert.equal((await auth.obtenerSesion()).negocios[0].rol_id, 2)
+  // Un administrador adicional debe estar activo para permitir la degradación.
+  await membresias.crearMembresia(1, { username: 'existente', rol_id: 2 })
   await membresias.cambiarRolMembresia(1, propia.id, { rol_id: 4 })
   const sesionRefrescada = await auth.obtenerSesion()
   assert.deepEqual(sesionRefrescada.negocios[0].permisos.sort(), ['listar_membresias', 'listar_roles'])
@@ -229,6 +234,39 @@ try {
   assert.equal(catalogo.flatMap((p) => p.results).every((r) => r.negocio_id === 1), true)
   assert.equal(seleccion.nombreRol(seleccion.conRoles({}, catalogo.flatMap((p) => p.results)), catalogo[2].results[0].id), 'Rol página 3')
   console.log('OK cuenta inactiva/inexistente y catálogo de roles de tres páginas sin mezclar negocios.')
+
+  // La consulta asignable no exige listar_roles ni permite delegar privilegios superiores.
+  for (const permission of ['crear_membresia', 'asignar_rol']) {
+    reset()
+    await login('admin_tienda')
+    const permissionId = permission === 'crear_membresia' ? 8 : 9
+    const limited = await roles.crearRol(1, { nombre: 'Operador limitado', permiso_ids: [permissionId] })
+    const empty = await roles.crearRol(1, { nombre: 'Rol vacío', permiso_ids: [] })
+    const actor = await membresias.crearMembresia(1, { username: 'existente', rol_id: limited.id })
+    await login('existente')
+    await error(() => roles.listarRoles(1), 'permission_denied')
+    const { cargarPaginasRolesAsignables } = await load('features/membresias/catalogo.ts')
+    const asignables = (await cargarPaginasRolesAsignables(1)).flatMap((p) => p.results)
+    assert.deepEqual(asignables.map((r) => r.id), [limited.id, empty.id])
+    await error(() => roles.listarRolesAsignables(2), 'permission_denied')
+    if (permission === 'crear_membresia') {
+      await error(() => membresias.crearMembresia(1, { username: 'escalada', password: 'Cuenta-12345!', rol_id: 2 }), 'validation_error', 'rol_id')
+      const created = await membresias.crearMembresia(1, { username: 'permitida', password: 'Cuenta-12345!', rol_id: empty.id })
+      assert.equal(created.rol_id, empty.id)
+    } else {
+      await error(() => membresias.cambiarRolMembresia(1, 3, { rol_id: 2 }), 'validation_error', 'rol_id')
+      assert.equal((await membresias.cambiarRolMembresia(1, 3, { rol_id: empty.id })).rol_id, empty.id)
+      assert.equal((await membresias.cambiarRolMembresia(1, actor.id, { rol_id: limited.id })).rol_id, limited.id)
+    }
+  }
+  reset()
+  await login('compartido')
+  await error(() => roles.listarRolesAsignables(1), 'permission_denied')
+  await login('admin_tienda')
+  const backup = await membresias.crearMembresia(1, { username: 'existente', rol_id: 2 })
+  mocks.configurarMocks({ usuariosInactivos: [backup.usuario.id] })
+  await error(() => membresias.cambiarRolMembresia(1, 1, { rol_id: 4 }), 'validation_error', 'rol_id')
+  console.log('OK cierre fase 1: permisos mínimos, catálogo asignable aislado, delegación limitada y último administrador activo.')
   mocks.reiniciarMocks()
 } finally {
   await server.close()
