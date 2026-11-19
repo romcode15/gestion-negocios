@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 export interface EntradaModulo {
-  id: 'auth' | 'negocios' | 'roles' | 'membresias'
+  id: 'auth' | 'negocios' | 'roles' | 'membresias' | 'categorias' | 'productos' | 'existencias' | 'movimientos'
   label: string
   path: string
   Page: ComponentType

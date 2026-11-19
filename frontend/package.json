@@ -12,7 +12,8 @@
     "test:sesion": "node verificar-sesion.mjs",
     "test:membresias": "node verificar-membresias.mjs",
     "test:flujos": "node verificar-flujos.mjs",
-    "test": "node verificar-api.mjs && node verificar-sesion.mjs && node verificar-panel.mjs && node verificar-membresias.mjs && node verificar-flujos.mjs",
+    "test:modales": "node verificar-modales.mjs",
+    "test": "node verificar-api.mjs && node verificar-sesion.mjs && node verificar-panel.mjs && node verificar-membresias.mjs && node verificar-flujos.mjs && node verificar-modales.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
