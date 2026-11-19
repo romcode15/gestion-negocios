@@ -9,6 +9,7 @@ import { usePermisosDelegables } from '../components/usePermisosDelegables'
 import { CrearRolForm } from '../components/CrearRolForm'
 import { listarRoles } from '../api'
 import type { Rol } from '../types'
+import { PageHeading } from '../../../components/ui/PageHeading'
 
 export function RolesPage() {
   const { negocioId } = useSesion()
@@ -18,7 +19,7 @@ export function RolesPage() {
 
   return (
     <section>
-      <h1>Roles del negocio</h1>
+      <PageHeading title="Roles del negocio" description="Consulta los roles y configura los permisos delegables de tu equipo." />
       {negocioId === null ? (
         <EmptyState title="Sin negocio activo">Selecciona un negocio para ver sus roles.</EmptyState>
       ) : !puedeListar && !puedeCrear ? (

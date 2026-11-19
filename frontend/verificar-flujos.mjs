@@ -31,8 +31,9 @@ async function submit(form, twice = false) {
     if (twice) form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }))
   })
   await flush()
+
 }
-const button = (label) => { const result = [...document.querySelectorAll('button')].find((b) => b.textContent === label); assert.ok(result, 'No existe botón ' + label); return result }
+const button = (label) => { const result = [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === label || b.textContent === label); assert.ok(result, 'No existe botón ' + label); return result }
 async function click(element) { await act(async () => element.click()); await flush() }
 try {
   const load = (path) => server.ssrLoadModule('/src/' + path)
@@ -48,11 +49,22 @@ try {
   mock.reiniciarMocks(); mock.configurarMocks({ latencia: 0 })
   await act(async () => root.render(React.createElement(App)))
   await flush()
+  assert.equal(document.querySelector('.toast'), null, 'Abrir el login sin sesión no debe avisar de expiración.')
+  const { leerTema, aplicarTema } = await load('app/theme.ts')
+  await click(document.querySelector('[aria-label="Activar modo oscuro"]'))
+  assert.equal(document.documentElement.dataset.theme, 'dark')
+  assert.equal(window.localStorage.getItem('gestion-negocios:theme'), 'dark')
+  assert.ok(document.querySelector('[aria-label="Activar modo claro"]'))
+  delete document.documentElement.dataset.theme
+  assert.equal(leerTema(), 'dark')
+  await act(async () => aplicarTema(leerTema()))
+  await click(document.querySelector('[aria-label="Activar modo claro"]'))
+  assert.equal(document.documentElement.dataset.theme, 'light')
   async function login(username) {
     await change(document, 'username', username)
     await change(document, 'password', 'Demo-12345!')
     await submit(document.querySelector('form'))
-    assert.match(document.body.textContent, /Cerrar sesión/)
+    assert.ok(document.querySelector('[aria-label="Cerrar sesión"]'))
   }
   async function go(path) { await act(async () => navegar(path)); await flush() }
   await login('plataforma')
@@ -61,6 +73,9 @@ try {
   assert.match(document.body.textContent, /Ferretería Norte/)
   const accountForm = () => document.querySelector('form [name="username"]').closest('form')
   const negocioForm = () => document.querySelector('form [name="nombre"]').closest('form')
+  assert.equal(field(negocioForm(), 'administrador_id').options.length, 6)
+  assert.ok(field(negocioForm(), 'administrador_id').querySelector('option[value="5"]'))
+  assert.equal(negocioForm().querySelector('[aria-label="Paginación de cuentas"]'), null)
   await change(accountForm(), 'username', 'plataforma')
   await change(accountForm(), 'password', 'Valida-12345!')
   await submit(accountForm())
@@ -107,6 +122,8 @@ try {
   assert.match(document.body.textContent, /Miembros del negocio/)
   assert.match(document.querySelector('table').textContent, /admin_tienda/)
   const memberForm = () => document.querySelector('form [name="username"]').closest('form')
+  assert.match(field(memberForm(), 'rol_id').textContent, /Rol integrado de dev/)
+  assert.equal(memberForm().querySelector('[aria-label="Paginación de roles"]'), null)
   await change(memberForm(), 'password', 'NoDebeQuedar')
   await click(memberForm().querySelector('input[value="existente"]'))
   assert.equal(memberForm().querySelector('[name="password"]'), null)
@@ -169,6 +186,11 @@ try {
   await flush()
   assert.match(document.body.textContent, /Acceso a la plataforma/)
   assert.equal(document.querySelector('table'), null)
+  assert.equal(document.querySelectorAll('.toast-warning').length, 1)
+  assert.match(document.querySelector('.toast-warning').textContent, /Tu sesión terminó/)
+  assert.equal(document.querySelector('.login-card .error'), null)
+  await click(document.querySelector('[aria-label="Cerrar notificación"]'))
+  assert.equal(document.querySelector('.toast'), null)
 
   // Regresiones de permisos mínimos: se preparan los datos por la API, luego
   // cada operación se ejecuta desde los formularios reales de React.

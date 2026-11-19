@@ -130,6 +130,26 @@ Desde frontend: `npm.cmd run test:modales`, `npm.cmd test`, `npm.cmd run lint`, 
 
 El caso de tamaño pequeño monta el formulario con viewport de prueba 320×568 y comprueba su DOM; **jsdom no mide el layout ni sustituye una revisión visual**. Revisión visual en navegador a 320×568 y escritorio: pendiente. Revisar cuerpo desplazable, acciones visibles, foco/teclado, errores largos y zoom antes de aprobar el PR. No se declara integración con Django/PostgreSQL.
 
-Mantener todos los formularios de fase 1 en su ubicación actual. Esta entrega reutiliza la base integrada, no incorpora los cambios visuales locales de otras ramas.
+Mantener todos los formularios de fase 1 en su ubicación actual. A petición del equipo, esta rama también incorpora los cambios visuales locales: login centrado, tema claro/oscuro, iconos, marco compartido y notificaciones. Se combinaron con la corrección #38 conservando el catálogo de roles asignables y las pruebas de permisos mínimos.
 
 Resultados ejecutados en esta entrega: `npm.cmd run test:modales`, `npm.cmd test`, `npm.cmd run lint` y `npm.cmd run build`: correctos, código de salida 0. Lint sin advertencias. Las regresiones incluyen la corrección #38. No se ejecutaron pruebas visuales en navegador ni conexión con Django/PostgreSQL.
+
+
+## Presentación común de módulos
+
+`AppShell` organiza la barra lateral, cabecera de cuenta y contexto activo. En móvil la navegación pasa a la parte superior. Las operaciones, permisos y consultas permanecen en sus módulos.
+
+- `PageHeading`: título y descripción uniformes.
+- `StatusBadge`: estado activo/inactivo con texto y color.
+- `ModuleIcon`: iconos de navegación SVG sin dependencias externas.
+- `PaginatedTable`: cabecera, contador y presentación de tablas compartidos.
+
+Los estilos de módulos están limitados a `.app-workspace` y `.workspace-content`; el inicio de sesión usa su propio layout. No se muestran métricas ni acciones que no existan en el contrato.
+
+Los selectores de cuentas y roles reúnen automáticamente las páginas autorizadas de la API y muestran una sola lista de opciones. `Pagination` se presenta únicamente en tablas; no debe colocarse dentro de formularios ni repetirse en cada fila.
+
+### Notificaciones toast
+
+`ToastProvider` se monta una vez en `App`. Desde cualquier componente dentro del proveedor, importar `useToast` de `components/feedback/ToastContext` y llamar `notify({ type: 'success' | 'info' | 'warning' | 'error', title: 'Título', message: 'Detalle opcional' })`. El toast aparece arriba, admite cierre manual y desaparece tras 7 segundos; pausa el cierre al pasar el cursor o enfocar. `duration: 0` mantiene la notificación hasta cerrarla. Hay un máximo de cuatro avisos visibles y estilos para ambos temas.
+
+La expiración de una sesión activa muestra un único toast de advertencia. Abrir la aplicación sin sesión es un estado normal y no genera esa notificación. Los errores de validación de campos continúan junto a sus controles.

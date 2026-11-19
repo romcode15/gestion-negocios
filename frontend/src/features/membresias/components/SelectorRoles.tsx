@@ -1,14 +1,14 @@
 import { ApiFeedback } from '../../../components/feedback/ApiFeedback'
 import { EmptyState, Loading } from '../../../components/feedback/Feedback'
 import { SelectField } from '../../../components/ui/SelectField'
-import { Pagination } from '../../../components/ui/Pagination'
 import type { Rol } from '../../roles/types'
 import type { EstadoRoles } from '../seleccion'
 type Props = { estado: EstadoRoles; value: number | null; onSeleccionar: (rol: Rol | null) => void; errors?: string[]; disabled?: boolean }
 export function SelectorRoles({ estado, value, onSeleccionar, errors = [], disabled = false }: Props) {
-  const { opciones, pagina, paginaActual, pendiente, error, puedeListar, onPagina, onReintentar } = estado
+  const { opciones, pagina, pendiente, error, puedeListar, onReintentar } = estado
   const seleccionado = estado.catalogo?.find((rol) => rol.id === value)
-  const disponibles = seleccionado && !opciones.some((rol) => rol.id === value) ? [...opciones, seleccionado] : opciones
+  const todas = estado.catalogo ?? opciones
+  const disponibles = seleccionado && !todas.some((rol) => rol.id === value) ? [...todas, seleccionado] : todas
   return <div className="selector-roles">
     {!puedeListar && <p className="feedback" role="note">No tienes permiso para consultar los roles asignables.</p>}
     {puedeListar && <>{pendiente && <Loading>Cargando roles…</Loading>}
@@ -18,7 +18,5 @@ export function SelectorRoles({ estado, value, onSeleccionar, errors = [], disab
       onChange={(event) => onSeleccionar(disponibles.find((rol) => rol.id === Number(event.target.value)) ?? null)}>
       <option value="">Selecciona un rol</option>{disponibles.map((rol) => <option key={rol.id} value={rol.id}>{rol.nombre}</option>)}
     </SelectField>
-    {puedeListar && pagina && <Pagination page={paginaActual} count={pagina.count} next={pagina.next} previous={pagina.previous} pending={pendiente}
-      disabled={disabled} onPage={onPagina} label="roles" />}
   </div>
 }
