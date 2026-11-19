@@ -200,7 +200,7 @@ nombre y tipo son textos requeridos, con máximos de 150 y 100 caracteres. admin
 El serializer valida los campos. El servicio crear_negocio vuelve a comprobar y bloquea la cuenta administradora dentro de transaction.atomic(), y guarda:
 
 1. El nuevo Negocio activo.
-2. Su rol predefinido Administrador de negocio y los cinco permisos de negocio, mediante preparar_administrador_negocio de #4.
+2. Su rol predefinido Administrador de negocio con el catálogo vigente de permisos de negocio, mediante `preparar_administrador_negocio`.
 3. La Membresia activa entre esa cuenta, ese negocio y ese rol.
 
 Si falla cualquiera de estos pasos, se revierte la operación completa, incluidas las asociaciones y los permisos de catálogo creados dentro de ella. El administrador inicial no recibe permisos de plataforma. La siguiente consulta auth/me refleja su membresía y permisos sin copiar datos obsoletos a la sesión.

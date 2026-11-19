@@ -223,15 +223,17 @@ class ServiciosPlataformaTests(TestCase):
             serializer.save()
         self.assertFalse(Negocio.objects.exists())
 
-    def test_rollback_incluye_catalogo_si_no_estaba_preparado(self):
+    def test_rollback_no_deja_permisos_nuevos_en_catalogo_incompleto(self):
         from negocios.models import Negocio
 
         usuario = get_user_model().objects.create_user(username="inicial")
+        permisos_anteriores = set(Permiso.objects.values_list("id", "codigo", "ambito"))
         with patch.object(Membresia, "save", side_effect=RuntimeError("Fallo simulado")):
             with self.assertRaises(RuntimeError):
                 crear_negocio("Tienda", "tienda", usuario.pk)
-        for modelo in (Negocio, Rol, Permiso, RolPermiso, Membresia):
+        for modelo in (Negocio, Rol, RolPermiso, Membresia):
             self.assertFalse(modelo.objects.exists(), modelo.__name__)
+        self.assertEqual(set(Permiso.objects.values_list("id", "codigo", "ambito")), permisos_anteriores)
 
     def test_integridad_inesperada_no_se_oculta_como_username_duplicado(self):
         with patch.object(get_user_model().objects, "create_user", side_effect=IntegrityError("Fallo simulado")):

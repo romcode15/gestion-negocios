@@ -65,7 +65,7 @@ Configurar el entorno según el README. Desde backend:
 .\.venv\Scripts\python.exe manage.py preparar_accesos
 ```
 
-El comando crea los cuatro permisos de plataforma, los cinco de negocio y el rol global Superadministrador con permisos de plataforma. Se puede repetir sin duplicarlos. Un catálogo incompatible o un rol personalizado con el nombre reservado produce un error; no se transforma silenciosamente en rol predefinido. No hay señales ni creación automática de cuentas.
+El comando completa los cuatro permisos de plataforma, el catálogo vigente de permisos de negocio y el rol global Superadministrador con permisos de plataforma. Se puede repetir sin duplicarlos. Un catálogo incompatible o un rol personalizado con el nombre reservado produce un error. No hay señales ni creación automática de cuentas.
 
 Para preparar la cuenta inicial, crear una cuenta mediante el mecanismo de Django (por ejemplo createsuperuser con contraseña introducida de manera interactiva) y asignarle explícitamente el rol global:
 
@@ -84,7 +84,7 @@ rol = preparar_administrador_negocio(negocio)
 # Crear luego Membresia para la cuenta administradora validada.
 ```
 
-El helper crea el rol predefinido del negocio con los cinco permisos de negocio. No crea la cuenta, el negocio ni la membresía. Los helpers usan transaction.atomic(); la transacción externa debe abarcar la operación completa en #6.
+El helper crea el rol predefinido con los 16 permisos de negocio vigentes, incluidos los 11 de [catálogo e inventario](fase2.md). La migración `accesos.0002_permisos_fase2` incorpora esos 11 permisos a los administradores predefinidos existentes. Los helpers usan `transaction.atomic()` y la transacción de alta de negocio abarca también la creación de su membresía.
 
 ## Datos y ejecución de pruebas
 

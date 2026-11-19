@@ -31,7 +31,7 @@ def _preparar_rol(nombre, negocio, permisos):
 
 @transaction.atomic
 def preparar_catalogo():
-    """Crea los nueve permisos y el rol global. Puede repetirse sin duplicados."""
+    """Completa el catálogo de permisos y el rol global sin duplicados."""
     plataforma = _preparar_permisos(PERMISOS_PLATAFORMA, Permiso.Ambito.PLATAFORMA)
     _preparar_permisos(PERMISOS_NEGOCIO, Permiso.Ambito.NEGOCIO)
     return _preparar_rol(SUPERADMINISTRADOR, None, plataforma)
@@ -39,7 +39,7 @@ def preparar_catalogo():
 
 @transaction.atomic
 def preparar_administrador_negocio(negocio):
-    """El servicio de alta de #6 llamará este helper dentro de su transacción."""
+    """Asigna el catálogo vigente de negocio al administrador predefinido."""
     if negocio.pk is None or negocio._state.adding:
         raise ValidationError({"negocio": "El negocio debe estar guardado."})
     permisos = _preparar_permisos(PERMISOS_NEGOCIO, Permiso.Ambito.NEGOCIO)

@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     'cuentas',
     'negocios.apps.NegociosConfig',
     'accesos.apps.AccesosConfig',
+    'catalogo',
+    'inventario',
 ]
 
 MIDDLEWARE = [

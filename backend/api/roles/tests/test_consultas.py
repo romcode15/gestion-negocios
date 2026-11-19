@@ -130,7 +130,10 @@ class ConsultasRolesTests(TestCase):
         response = self.client.get(roles_url(self.tienda.negocio.pk) + "?page=2")
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.data["next"])
-        self.assert_error(self.client.get(permisos_url(self.tienda.negocio.pk) + "?page=4"), 404, "not_found")
+        ultima_pagina = (len(PERMISOS_NEGOCIO) + 1) // 2
+        self.assert_error(
+            self.client.get(permisos_url(self.tienda.negocio.pk) + f"?page={ultima_pagina + 1}"), 404, "not_found",
+        )
 
     def test_lista_vacia_paginada(self):
         self.login(self.tienda.administrador)

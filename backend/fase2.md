@@ -72,6 +72,25 @@ Tras la base compartida, Sebastián y Diego avanzan por sus propias cadenas. Sus
 - Fixtures con dos negocios y SKU/nombres repetidos entre ellos, una cuenta compartida con permisos distintos, categorías/productos inactivos y productos por unidad/kg/litro.
 - Helpers comunes de validación de campos/filtros, si son necesarios, en `api/common/` y documentados antes de que los módulos los utilicen; no introducir copias incompatibles por módulo.
 
+### Imports y uso de la base compartida
+
+```python
+from catalogo.models import Categoria, Producto
+from inventario.models import Existencia, MovimientoInventario
+from tests.support.fase2 import (
+    crear_dos_catalogos_prueba,
+    crear_movimiento_prueba,
+    crear_producto_prueba,
+)
+```
+
+- `crear_producto_prueba(negocio, **datos)` devuelve un `Producto`. Su fila de saldo y versión cero se consulta mediante `producto.existencias.get()`. Se puede especificar `categoria` o `categoria_id`.
+- `crear_dos_catalogos_prueba()` devuelve dos `CatalogoPrueba`. Cada uno contiene `contexto`, `membresia_compartida`, `categoria`, `categoria_inactiva`, `producto`, `producto_inactivo` y `producto_fraccionario`. La cuenta compartida tiene `listar_productos` en el primer negocio y `registrar_entrada` en el segundo.
+- `crear_movimiento_prueba(producto, usuario, tipo=..., cantidad=...)` recibe un delta `Decimal` con signo y actualiza en conjunto saldo, versión e historial. La huella es sintética. Para comprobar reintentos, crear la operación original con el servicio de B2 cuando esté disponible.
+- B4 define rutas relativas en `api/catalogo/categorias/urls.py`, B5 en `api/catalogo/productos/urls.py` y B6 en `api/inventario/stock/urls.py`. B7–B9 comparten `api/inventario/movimientos/urls.py`, donde declaran `movimientos/` y `ajustes/`. B2 aporta el servicio de escritura; los submódulos lo consumen sin cambiar las composiciones raíz.
+
+Las escrituras individuales validan relaciones del mismo negocio y estado mediante `save()` y `clean()`. PostgreSQL aplica unicidad, claves foráneas y restricciones de cada fila. Las operaciones masivas omiten las validaciones de modelo. Usar los bloqueos descritos en esta guía para coordinar escrituras de catálogo e inventario.
+
 ## 5. Servicio de inventario: contrato interno B2
 
 Exportar desde `api/inventario/services.py`:
