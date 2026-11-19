@@ -5,4 +5,6 @@ urlpatterns = [
     path("plataforma/", include("api.plataforma.urls")),
     path("negocios/<int:negocio_id>/", include("api.roles.urls")),
     path("negocios/<int:negocio_id>/", include("api.membresias.urls")),
+    path("negocios/<int:negocio_id>/", include("api.catalogo.urls")),
+    path("negocios/<int:negocio_id>/", include("api.inventario.urls")),
 ]

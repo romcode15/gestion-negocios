@@ -14,11 +14,16 @@ from negocios.models import Negocio
 
 
 class PreparacionTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Los casos de preparación verifican el servicio desde un catálogo vacío.
+        Permiso.objects.all().delete()
+
     def test_catalogo_idempotente_y_permisos_exactos(self):
         primero = preparar_catalogo()
         segundo = preparar_catalogo()
         self.assertEqual(primero.pk, segundo.pk)
-        self.assertEqual(Permiso.objects.count(), 9)
+        self.assertEqual(Permiso.objects.count(), len(PERMISOS_NEGOCIO) + len(PERMISOS_PLATAFORMA))
         self.assertEqual(Rol.objects.count(), 1)
         self.assertEqual(RolPermiso.objects.count(), 4)
         self.assertEqual(set(Permiso.objects.filter(ambito="negocio").values_list("codigo", flat=True)), set(PERMISOS_NEGOCIO))
@@ -74,7 +79,7 @@ class PreparacionTests(TestCase):
         for _ in range(2):
             call_command("preparar_accesos", stdout=StringIO())
             call_command("preparar_accesos", username=usuario.username, stdout=StringIO())
-        self.assertEqual(Permiso.objects.count(), 9)
+        self.assertEqual(Permiso.objects.count(), len(PERMISOS_NEGOCIO) + len(PERMISOS_PLATAFORMA))
         self.assertEqual(UsuarioRolGlobal.objects.count(), 1)
 
     def test_comando_rechaza_cuenta_inexistente_e_inactiva(self):
