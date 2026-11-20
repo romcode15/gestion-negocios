@@ -5,10 +5,11 @@ import { useToast } from '../../../components/feedback/ToastContext'
 import { Button } from '../../../components/ui/Button'
 import { PageHeading } from '../../../components/ui/PageHeading'
 import { RegistrarMovimientoModal } from '../components/RegistrarMovimientoModal'
+import { AjusteInventarioModal } from '../components/AjusteInventarioModal'
 import { notificarHistorialActualizado } from '../components/eventos'
 import type { Movimiento } from '../types'
 
-type Accion = 'entrada' | 'salida'
+type Accion = 'entrada' | 'salida' | 'ajuste'
 
 function AvisoHistorialPendiente() {
   return <p className="feedback" role="note">El historial y sus filtros: pendiente de implementación en F9.</p>
@@ -19,7 +20,7 @@ export function MovimientosPage() {
   // siempre existe SessionContext y se renderiza el contenido con permisos.
   const contexto = useContext(SessionContext)
   if (!contexto) return <>
-    <PageHeading title="Movimientos de inventario" description="Registra entradas y salidas del negocio activo." />
+    <PageHeading title="Movimientos de inventario" description="Registra entradas, salidas y ajustes del negocio activo." />
     <AvisoHistorialPendiente />
   </>
   return <ContenidoMovimientos />
@@ -30,13 +31,16 @@ function ContenidoMovimientos() {
   const { notify } = useToast()
   const puedeEntrada = usePermiso('registrar_entrada')
   const puedeSalida = usePermiso('registrar_salida')
+  const puedeAjustar = usePermiso('ajustar_inventario')
   const puedeListar = usePermiso('listar_movimientos')
   const [accion, setAccion] = useState<Accion | null>(null)
   const [mensaje, setMensaje] = useState('')
 
   function trasRegistrar(movimiento: Movimiento) {
     setAccion(null)
-    setMensaje(`${movimiento.tipo === 'entrada' ? 'Entrada' : 'Salida'} registrada correctamente.`)
+    const etiqueta = movimiento.tipo === 'entrada' ? 'Entrada' : movimiento.tipo === 'salida' ? 'Salida' : 'Ajuste'
+    const participio = movimiento.tipo === 'ajuste' ? 'registrado' : 'registrada'
+    setMensaje(`${etiqueta} ${participio} correctamente.`)
     notify({
       type: 'success',
       title: 'Movimiento registrado',
@@ -47,18 +51,21 @@ function ContenidoMovimientos() {
   }
 
   return <>
-    <PageHeading title="Movimientos de inventario" description="Registra entradas y salidas del negocio activo." />
+    <PageHeading title="Movimientos de inventario" description="Registra entradas, salidas y ajustes del negocio activo." />
     {mensaje && <p role="status">{mensaje}</p>}
     {negocioId === null && <p className="feedback" role="note">Selecciona un negocio activo para registrar movimientos.</p>}
-    {(puedeEntrada || puedeSalida) && <div className="movimientos-acciones">
+    {(puedeEntrada || puedeSalida || puedeAjustar) && <div className="movimientos-acciones">
       {puedeEntrada && <Button aria-label="Registrar entrada" onClick={() => setAccion('entrada')}>Entrada</Button>}
       {puedeSalida && <Button aria-label="Registrar salida" onClick={() => setAccion('salida')}>Salida</Button>}
+      {puedeAjustar && <Button aria-label="Ajustar inventario" onClick={() => setAccion('ajuste')}>Ajustar</Button>}
     </div>}
-    {!puedeEntrada && !puedeSalida && <p className="feedback" role="note">No tienes permiso para registrar entradas ni salidas.</p>}
+    {!puedeEntrada && !puedeSalida && !puedeAjustar && <p className="feedback" role="note">No tienes permiso para registrar entradas ni salidas. Tampoco para ajustar inventario.</p>}
     {accion === 'entrada' && <RegistrarMovimientoModal tipo="entrada" negocioId={negocioId}
       onRegistrado={trasRegistrar} onClose={() => setAccion(null)} />}
     {accion === 'salida' && <RegistrarMovimientoModal tipo="salida" negocioId={negocioId}
       onRegistrado={trasRegistrar} onClose={() => setAccion(null)} />}
+    {accion === 'ajuste' && <AjusteInventarioModal negocioId={negocioId}
+      onAjustado={trasRegistrar} onClose={() => setAccion(null)} />}
     <AvisoHistorialPendiente />
   </>
 }
