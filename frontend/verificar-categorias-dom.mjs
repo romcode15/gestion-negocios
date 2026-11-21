@@ -19,7 +19,6 @@ const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 30)
 try {
   const load = (path) => server.ssrLoadModule('/src/' + path)
   const mocks = await load('mocks/services/transport.ts')
-  const auth = await load('features/auth/api.ts')
   const { SessionContext } = await load('app/providers/SessionContext.ts')
   const { crearSessionStore } = await load('app/providers/sessionStore.ts')
   const { CategoriasPage } = await load('features/categorias/pages/index.tsx')
