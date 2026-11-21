@@ -90,6 +90,8 @@ Probar además desde Swagger un caso permitido, otro sin permiso y, para módulo
 
 ## Documentación y pruebas
 
+La API de existencias de fase 2 ya está disponible: lista con `consultar_existencias` y detalle por `producto_id` con ese permiso o `ajustar_inventario`. Los resúmenes permiten consultar saldo y mínimo sin permisos de catálogo. Ver [API y seguridad](API.md) y el [contrato común](../fase2.md).
+
 - [Fase 1](Fase1.md): contrato y criterios de cierre.
 - [Fase 2](fase2.md): guía de catálogo/inventario y reparto de backend; leer también el [contrato común](../fase2.md).
 - [Estructura](ESTRUCTURA.md): carpetas y responsabilidades.

@@ -1,5 +1,16 @@
 # Base de API y seguridad · Issue #5
 
+## Existencias · Issue #44
+
+La consulta de fase 2 está implementada bajo `/api/v1/negocios/{negocio_id}/existencias/`:
+
+- GET de la lista requiere `consultar_existencias`; acepta `search`, `categoria_id`, `activo`, `bajo_minimo` y `page` según [el contrato común](../fase2.md). Incluye productos inactivos por defecto y ordena por `producto_id` con páginas de dos registros.
+- GET `/{producto_id}/` requiere `consultar_existencias` o `ajustar_inventario`. El ID es el del producto, aunque sea distinto del ID de la existencia. Ajustar por sí solo no concede el listado.
+- La respuesta incluye el resumen del producto/categoría, cantidades como cadenas, el mínimo actual, `bajo_minimo` calculado con comparación estricta y la versión. No requiere permisos de listados de catálogo.
+- No hay escrituras de saldo en estas rutas. Entradas, salidas y ajustes siguen utilizando el servicio transaccional común. Consultar no modifica cantidad, versión ni historial.
+
+Las pruebas de `api/inventario/stock/tests/test_stock.py` cubren permisos mínimos, tenant, inactivos, filtros, orden, detalle por producto, ausencia de N+1 y OpenAPI. `tools/verificar_postgres.py --integracion-frontend` comprueba además los formularios React de catálogo e inventario contra HTTP real, incluidos conflicto de ajuste y reintento sin duplicar.
+
 La fase 1 incluye autenticación, usuarios y negocios de plataforma, roles, permisos y membresías. Las rutas están implementadas y comparten las reglas de sesión, autorización, errores y paginación descritas aquí. El contrato completo se mantiene en [Fase1.md](Fase1.md) y se puede explorar desde Swagger.
 
 ## Roles y membresías

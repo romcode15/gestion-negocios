@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.http import Http404
-from django.test import SimpleTestCase, TestCase
+from django.test import TestCase
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied
 
@@ -13,15 +13,6 @@ from api.common.access import obtener_recurso_negocio, resolver_contexto_negocio
 from catalogo.models import Producto
 from inventario.models import Existencia, MovimientoInventario
 from tests.support.fase2 import crear_dos_catalogos_prueba, crear_movimiento_prueba, crear_producto_prueba
-
-
-class RutasBaseTests(SimpleTestCase):
-    def test_composiciones_sin_endpoints_ficticios(self):
-        for ruta in ("existencias/",):
-            with self.subTest(ruta=ruta):
-                respuesta = self.client.get(f"/api/v1/negocios/1/{ruta}")
-                self.assertEqual(respuesta.status_code, 404)
-                self.assertEqual(respuesta.json()["code"], "not_found")
 
 
 class InventarioTests(TestCase):
