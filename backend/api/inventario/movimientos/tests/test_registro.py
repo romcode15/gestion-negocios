@@ -129,10 +129,10 @@ class RegistroMovimientoTests(TestCase):
 
 @override_settings(DEBUG=True)
 class DocumentacionRegistroMovimientoTests(TestCase):
-    def test_swagger_documenta_solo_post_movimientos(self):
+    def test_swagger_documenta_get_y_post_movimientos(self):
         schema = APIClient().get("/api/schema/?format=json").data
         ruta = schema["paths"]["/api/v1/negocios/{negocio_id}/movimientos/"]
-        self.assertEqual(set(ruta), {"post"})
+        self.assertEqual(set(ruta), {"get", "post"})
         self.assertEqual(set(schema["components"]["schemas"]["RegistrarMovimientoRequest"]["properties"]), {
             "producto_id", "tipo", "cantidad", "motivo", "clave_operacion",
         })
