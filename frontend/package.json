@@ -15,10 +15,12 @@
     "test:categorias-dom": "node verificar-categorias-dom.mjs",
     "test:productos": "node verificar-productos.mjs && node verificar-productos-dom.mjs",
     "test:productos-dom": "node verificar-productos-dom.mjs",
+    "test:existencias": "node verificar-existencias.mjs && node verificar-existencias-dom.mjs",
+    "test:existencias-dom": "node verificar-existencias-dom.mjs",
     "test:flujos": "node verificar-flujos.mjs",
     "test:modales": "node verificar-modales.mjs",
     "test:fase2": "node verificar-fase2.mjs && node verificar-http-fase2.mjs",
-    "test": "node verificar-api.mjs && node verificar-sesion.mjs && node verificar-panel.mjs && node verificar-membresias.mjs && node verificar-categorias.mjs && node verificar-categorias-dom.mjs && node verificar-productos.mjs && node verificar-productos-dom.mjs && node verificar-flujos.mjs && node verificar-modales.mjs && node verificar-fase2.mjs && node verificar-http-fase2.mjs",
+    "test": "node verificar-api.mjs && node verificar-sesion.mjs && node verificar-panel.mjs && node verificar-membresias.mjs && node verificar-categorias.mjs && node verificar-categorias-dom.mjs && node verificar-productos.mjs && node verificar-productos-dom.mjs && node verificar-existencias.mjs && node verificar-existencias-dom.mjs && node verificar-flujos.mjs && node verificar-modales.mjs && node verificar-fase2.mjs && node verificar-http-fase2.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
