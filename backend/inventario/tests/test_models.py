@@ -17,7 +17,7 @@ from tests.support.fase2 import crear_dos_catalogos_prueba, crear_movimiento_pru
 
 class RutasBaseTests(SimpleTestCase):
     def test_composiciones_sin_endpoints_ficticios(self):
-        for ruta in ("productos/", "existencias/", "movimientos/", "ajustes/"):
+        for ruta in ("existencias/", "movimientos/", "ajustes/"):
             with self.subTest(ruta=ruta):
                 respuesta = self.client.get(f"/api/v1/negocios/1/{ruta}")
                 self.assertEqual(respuesta.status_code, 404)
