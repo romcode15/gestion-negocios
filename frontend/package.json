@@ -16,7 +16,7 @@
     "test:flujos": "node verificar-flujos.mjs",
     "test:modales": "node verificar-modales.mjs",
     "test:fase2": "node verificar-fase2.mjs && node verificar-http-fase2.mjs",
-    "test": "node verificar-api.mjs && node verificar-sesion.mjs && node verificar-panel.mjs && node verificar-membresias.mjs && node verificar-categorias.mjs && node verificar-flujos.mjs && node verificar-modales.mjs && node verificar-fase2.mjs && node verificar-http-fase2.mjs",
+    "test": "node verificar-api.mjs && node verificar-sesion.mjs && node verificar-panel.mjs && node verificar-membresias.mjs && node verificar-categorias.mjs && node verificar-categorias-dom.mjs && node verificar-flujos.mjs && node verificar-modales.mjs && node verificar-fase2.mjs && node verificar-http-fase2.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

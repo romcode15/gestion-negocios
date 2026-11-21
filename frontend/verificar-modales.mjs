@@ -154,8 +154,10 @@ try {
     for (const codigo of permisos) assert.equal(puedeAcceder(entry, session([codigo]), 1), true)
     assert.equal(puedeAcceder(entry, session([]), 1), false)
     assert.equal(puedeAcceder(entry, session(permisos), 2), false)
-    await render(h(entry.Page))
-    assert.match(document.getElementById('root').textContent, /pendiente de implementación/)
+    if (id !== 'categorias') {
+      await render(h(entry.Page))
+      assert.match(document.getElementById('root').textContent, /pendiente de implementación/)
+    }
   }
   // Consumidor de demostración: los módulos se remontan por revisión, como AppRoutes.
   const allowed = session(['crear_categoria'])
