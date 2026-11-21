@@ -117,7 +117,7 @@ class HistorialMovimientoTests(TestCase):
             [self.salida.pk, self.entrada.pk],
         )
         self.assertEqual(
-            [item["id"] for item in self.todas("?search=venta")], [self.salida.pk],
+            [item["id"] for item in self.todas("?search=venta")], [],
         )
         self.assertEqual(
             [item["id"] for item in self.todas("?desde=2026-01-02T12:01:00Z&hasta=2026-01-02T12:03:00Z")],
@@ -129,6 +129,10 @@ class HistorialMovimientoTests(TestCase):
             "?producto_id=0": ["producto_id"],
             "?tipo=otro": ["tipo"],
             "?desde=no-es-fecha": ["desde"],
+            "?desde=2026-01-02": ["desde"],
+            "?hasta=2026-01-02T12:00:00": ["hasta"],
+            "?producto_id=1.0": ["producto_id"],
+            "?producto_id=9999999999999999999999999": ["producto_id"],
             "?desde=2026-01-03T00:00:00Z&hasta=2026-01-02T00:00:00Z": ["hasta"],
             "?orden=id": ["orden"],
             "?page_size=50": ["page_size"],
@@ -137,7 +141,7 @@ class HistorialMovimientoTests(TestCase):
         for consulta, campos in casos.items():
             with self.subTest(consulta=consulta):
                 self.assert_error(self.client.get(url(self.contexto.negocio.pk) + consulta), 400, campos=campos)
-        self.assertEqual(self.client.get(url(self.contexto.negocio.pk) + f"?producto_id={self.producto_ajeno.pk}").data["count"], 0)
+        self.assert_error(self.client.get(url(self.contexto.negocio.pk) + f"?producto_id={self.producto_ajeno.pk}"), 400, campos=["producto_id"])
 
     def test_permiso_de_lectura_es_independiente_de_escritura(self):
         usuario = get_user_model().objects.create_user(username="solo_historial")
@@ -153,10 +157,11 @@ class HistorialMovimientoTests(TestCase):
         Membresia.objects.create(usuario=usuario, negocio=self.contexto.negocio, rol=rol)
         self.login(usuario)
         self.assert_error(self.client.get(url(self.contexto.negocio.pk)), 403, "permission_denied")
+        self.assertEqual(self.client.head(url(self.contexto.negocio.pk)).status_code, 403)
 
         self.login(self.contexto.administrador)
         self.assert_error(self.client.get(url(self.otro_contexto.negocio.pk)), 403, "permission_denied")
-        self.assertEqual(self.client.get(url(self.contexto.negocio.pk) + f"?producto_id={self.producto_ajeno.pk}").data["count"], 0)
+        self.assert_error(self.client.get(url(self.contexto.negocio.pk) + f"?producto_id={self.producto_ajeno.pk}"), 400, campos=["producto_id"])
 
     def test_get_no_modifica_historial_y_metodos_de_escritura_no_estan_habilitados(self):
         antes = list(MovimientoInventario.objects.values_list("id", "creado_en"))
@@ -176,4 +181,4 @@ class DocumentacionHistorialMovimientoTests(TestCase):
             {parametro["name"] for parametro in ruta["get"]["parameters"]},
             {"negocio_id", "page", "producto_id", "tipo", "search", "desde", "hasta"},
         )
-        self.assertEqual(set(ruta["get"]["responses"]), {"200", "400", "403"})
+        self.assertEqual(set(ruta["get"]["responses"]), {"200", "400", "403", "404"})

@@ -17,7 +17,6 @@ def movimientos_del_negocio(
         queryset = queryset.filter(
             Q(producto__sku__icontains=search)
             | Q(producto__nombre__icontains=search)
-            | Q(motivo__icontains=search)
         )
     if desde is not None:
         queryset = queryset.filter(creado_en__gte=desde)

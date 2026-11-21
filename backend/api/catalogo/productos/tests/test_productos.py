@@ -7,7 +7,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.db import close_old_connections, connections, transaction
 from django.test import TestCase, TransactionTestCase, override_settings
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.test import APIClient
 
 from accesos.models import Membresia
@@ -105,10 +105,33 @@ class BaseProductos(TestCase):
             resultados += respuesta.data["results"]
         return resultados
 
+
     def estado(self):
         productos = list(Producto.objects.order_by("id").values())
         existencias = list(Existencia.objects.order_by("id").values("producto_id", "cantidad", "version"))
         return productos, existencias
+
+
+class LimitesProductosTests(BaseProductos):
+    def test_decimales_fuera_de_rango_responden_400_sin_guardar(self):
+        antes = (Producto.objects.count(), Existencia.objects.count())
+        for campo in ("precio_venta", "stock_minimo"):
+            with self.subTest(campo=campo):
+                response = self.post(self.datos(**{campo: "9" * 80}))
+                self.assert_error(response, 400, "validation_error", [campo])
+        self.assertEqual((Producto.objects.count(), Existencia.objects.count()), antes)
+
+    def test_revalida_autorizacion_despues_de_esperar_categoria(self):
+        lock = services._bloquear_categoria
+        def desactivar_actor(*args):
+            categoria = lock(*args)
+            Membresia.objects.filter(pk=self.tienda.membresia.pk).update(activo=False)
+            return categoria
+        contexto = resolver_contexto_negocio(self.tienda.administrador, self.negocio.pk, "crear_producto")
+        with patch.object(services, "_bloquear_categoria", side_effect=desactivar_actor):
+            with self.assertRaises(PermissionDenied):
+                services.crear_producto(contexto, **self.datos(precio_venta=Decimal("2.50")))
+        self.assertFalse(Producto.objects.filter(sku="JUGO-1").exists())
 
 
 class ListadoTests(BaseProductos):

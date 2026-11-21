@@ -34,13 +34,13 @@ class TienePermisoMovimiento(BasePermission):
 
     def has_permission(self, request, view):
         exigir_usuario_activo(request.user)
-        if request.method == "GET":
+        if request.method in ("GET", "HEAD"):
             view.contexto_negocio = resolver_contexto_negocio(
                 request.user, view.kwargs["negocio_id"], "listar_movimientos",
             )
             return True
         tipo = request.data.get("tipo") if isinstance(request.data, dict) else None
-        permiso = _PERMISOS.get(tipo)
+        permiso = _PERMISOS.get(tipo) if isinstance(tipo, str) else None
         view.contexto_negocio = resolver_contexto_negocio(
             request.user, view.kwargs["negocio_id"], permiso,
         )
@@ -59,6 +59,7 @@ class RegistrarMovimientoView(generics.ListCreateAPIView):
     def filtros(self):
         serializer = FiltrosMovimientoSerializer(
             data=self.request.query_params.dict(), query_params=self.request.query_params,
+            context=self.get_serializer_context(),
         )
         serializer.is_valid(raise_exception=True)
         return serializer.validated_data
@@ -70,7 +71,7 @@ class RegistrarMovimientoView(generics.ListCreateAPIView):
 
     def get_serializer_context(self):
         contexto = super().get_serializer_context()
-        contexto["contexto_negocio"] = self.contexto_negocio
+        contexto["contexto_negocio"] = getattr(self, "contexto_negocio", None)
         return contexto
 
     @extend_schema(
@@ -88,7 +89,7 @@ class RegistrarMovimientoView(generics.ListCreateAPIView):
             OpenApiParameter("hasta", OpenApiTypes.DATETIME),
             OpenApiParameter("page", OpenApiTypes.INT),
         ],
-        responses={200: MovimientoSerializer(many=True), 400: ErrorSerializer, 403: ErrorSerializer},
+        responses={200: MovimientoSerializer(many=True), 400: ErrorSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
@@ -128,7 +129,7 @@ class RegistrarAjusteView(generics.CreateAPIView):
 
     def get_serializer_context(self):
         contexto = super().get_serializer_context()
-        contexto["contexto_negocio"] = self.contexto_negocio
+        contexto["contexto_negocio"] = getattr(self, "contexto_negocio", None)
         return contexto
 
     @extend_schema(

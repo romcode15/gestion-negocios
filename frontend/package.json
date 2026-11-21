@@ -20,8 +20,11 @@
     "test:flujos": "node verificar-flujos.mjs",
     "test:modales": "node verificar-modales.mjs",
     "test:fase2": "node verificar-fase2.mjs && node verificar-http-fase2.mjs",
-    "test": "node verificar-api.mjs && node verificar-sesion.mjs && node verificar-panel.mjs && node verificar-membresias.mjs && node verificar-categorias.mjs && node verificar-categorias-dom.mjs && node verificar-productos.mjs && node verificar-productos-dom.mjs && node verificar-existencias.mjs && node verificar-existencias-dom.mjs && node verificar-flujos.mjs && node verificar-modales.mjs && node verificar-fase2.mjs && node verificar-http-fase2.mjs",
-    "preview": "vite preview"
+    "test": "node verificar-api.mjs && node verificar-sesion.mjs && node verificar-panel.mjs && node verificar-membresias.mjs && node verificar-categorias.mjs && node verificar-categorias-dom.mjs && node verificar-productos.mjs && node verificar-productos-dom.mjs && node verificar-existencias.mjs && node verificar-existencias-dom.mjs && node verificar-flujos.mjs && node verificar-modales.mjs && node verificar-fase2.mjs && node verificar-http-fase2.mjs && node verificar-movimientos.mjs && node verificar-ajustes.mjs && node verificar-historial.mjs",
+    "preview": "vite preview",
+    "test:movimientos": "node verificar-movimientos.mjs",
+    "test:ajustes": "node verificar-ajustes.mjs",
+    "test:historial": "node verificar-historial.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",

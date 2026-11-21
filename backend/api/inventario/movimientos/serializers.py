@@ -4,8 +4,11 @@ from decimal import Decimal
 
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from django.utils.dateparse import parse_datetime
+from django.utils.timezone import is_aware
+from catalogo.models import Producto
 
-from api.common.serializers import UsuarioSerializer
+from api.common.serializers import ProductoOpcionSerializer, UsuarioSerializer
 from api.catalogo.categorias.serializers import TextoField
 from inventario.models import MovimientoInventario
 
@@ -75,14 +78,6 @@ class StockObjetivoSerializerField(serializers.Field):
         return format(value, ".3f")
 
 
-class ProductoOpcionSerializer(serializers.Serializer):
-    id = serializers.IntegerField(read_only=True)
-    negocio_id = serializers.IntegerField(read_only=True)
-    sku = serializers.CharField(read_only=True)
-    nombre = serializers.CharField(read_only=True)
-    unidad = serializers.CharField(read_only=True)
-
-
 class MovimientoSerializer(serializers.ModelSerializer):
     producto = ProductoOpcionSerializer(read_only=True)
     usuario = UsuarioSerializer(read_only=True)
@@ -99,8 +94,15 @@ class MovimientoSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class EnteroJsonField(serializers.IntegerField):
+    def to_internal_value(self, data):
+        if type(data) is not int:
+            raise serializers.ValidationError("Envía un entero JSON.")
+        return super().to_internal_value(data)
+
+
 class RegistrarMovimientoSerializer(EntradaEstrictaSerializer):
-    producto_id = serializers.IntegerField(min_value=1)
+    producto_id = EnteroJsonField(min_value=1)
     tipo = serializers.ChoiceField(choices=["entrada", "salida"])
     cantidad = CantidadSerializerField()
     motivo = TextoField(max_length=255)
@@ -117,9 +119,9 @@ class RegistrarMovimientoSerializer(EntradaEstrictaSerializer):
 
 
 class RegistrarAjusteSerializer(EntradaEstrictaSerializer):
-    producto_id = serializers.IntegerField(min_value=1)
+    producto_id = EnteroJsonField(min_value=1)
     stock_objetivo = StockObjetivoSerializerField()
-    version_esperada = serializers.IntegerField(min_value=0)
+    version_esperada = EnteroJsonField(min_value=0)
     motivo = TextoField(max_length=255)
     clave_operacion = serializers.UUIDField()
 
@@ -132,12 +134,23 @@ class RegistrarAjusteSerializer(EntradaEstrictaSerializer):
         return MovimientoSerializer(instance, context=self.context).data
 
 
+class FechaConZonaField(serializers.DateTimeField):
+    def to_internal_value(self, data):
+        try:
+            fecha = parse_datetime(data) if isinstance(data, str) and "T" in data.upper() else None
+        except ValueError:
+            fecha = None
+        if fecha is None or not is_aware(fecha):
+            raise serializers.ValidationError("Envía una fecha ISO 8601 con hora y zona horaria.")
+        return super().to_internal_value(data)
+
+
 class FiltrosMovimientoSerializer(serializers.Serializer):
-    producto_id = serializers.IntegerField(min_value=1, required=False)
+    producto_id = serializers.RegexField(r"^[1-9][0-9]{0,15}$", required=False)
     tipo = serializers.ChoiceField(choices=["entrada", "salida", "ajuste"], required=False)
     search = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
-    desde = serializers.DateTimeField(required=False)
-    hasta = serializers.DateTimeField(required=False)
+    desde = FechaConZonaField(required=False)
+    hasta = FechaConZonaField(required=False)
 
     def __init__(self, *args, query_params=None, **kwargs):
         self.query_params = query_params
@@ -163,3 +176,10 @@ class FiltrosMovimientoSerializer(serializers.Serializer):
         if "search" in attrs:
             attrs["search"] = attrs["search"].strip()
         return attrs
+
+    def validate_producto_id(self, value):
+        negocio_id = self.context["contexto_negocio"].negocio.pk
+        producto_id = int(value)
+        if not Producto.objects.filter(pk=producto_id, negocio_id=negocio_id).exists():
+            raise serializers.ValidationError("Producto no disponible en el negocio.")
+        return producto_id

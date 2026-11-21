@@ -126,6 +126,16 @@ class RegistroMovimientoTests(TestCase):
         self.assert_error(response, 403)
         self.assertEqual((self.saldo(), MovimientoInventario.objects.count()), antes)
 
+    def test_tipos_json_invalidos_no_generan_error_interno_ni_escritura(self):
+        for tipo in ([], {}, True, 1):
+            with self.subTest(tipo=tipo):
+                self.assert_error(self.post(tipo=tipo), 400, campos=["tipo"])
+        for producto_id in (True, str(self.producto.pk), float(self.producto.pk)):
+            with self.subTest(producto_id=producto_id):
+                self.assert_error(self.post(producto_id=producto_id), 400, campos=["producto_id"])
+        self.assertEqual(self.saldo(), Decimal("0.000"))
+        self.assertEqual(MovimientoInventario.objects.count(), 0)
+
 
 @override_settings(DEBUG=True)
 class DocumentacionRegistroMovimientoTests(TestCase):

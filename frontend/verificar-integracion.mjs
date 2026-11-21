@@ -17,9 +17,9 @@ await server.listen()
 const origin = 'http://127.0.0.1:' + server.httpServer.address().port
 const dom = new JSDOM('<!doctype html><div id="root"></div>', { url: origin })
 const originals = new Map()
-for (const name of ['window', 'document', 'navigator', 'HTMLElement', 'HTMLInputElement', 'HTMLSelectElement', 'Event', 'MouseEvent', 'PopStateEvent', 'sessionStorage']) {
+for (const name of ['window', 'document', 'navigator', 'HTMLElement', 'HTMLInputElement', 'HTMLSelectElement', 'Event', 'MouseEvent', 'PopStateEvent', 'sessionStorage', 'localStorage', 'Node', 'KeyboardEvent', 'CustomEvent', 'MutationObserver', 'getComputedStyle']) {
   originals.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
-  Object.defineProperty(globalThis, name, { configurable: true, value: dom.window[name] })
+  Object.defineProperty(globalThis, name, { configurable: true, value: name === 'getComputedStyle' ? dom.window.getComputedStyle.bind(dom.window) : dom.window[name] })
 }
 originals.set('requestAnimationFrame', Object.getOwnPropertyDescriptor(globalThis, 'requestAnimationFrame'))
 Object.defineProperty(globalThis, 'requestAnimationFrame', { configurable: true, value: (fn) => setTimeout(fn, 0) })
@@ -69,14 +69,14 @@ async function submit(form, predicate, label) {
   await until(predicate, label)
 }
 async function logout() {
-  const button = [...document.querySelectorAll('button')].find((b) => b.textContent === 'Cerrar sesión')
+  const button = document.querySelector('button[aria-label="Cerrar sesión"]')
   await act(async () => button.click())
-  await until(() => document.querySelector('input[name="password"]') && !document.body.textContent.includes('Cerrar sesión'), 'logout')
+  await until(() => document.querySelector('input[name="password"]') && !document.querySelector('button[aria-label="Cerrar sesión"]'), 'logout')
 }
 async function login(username) {
   await change(document, 'username', username)
   await change(document, 'password', password)
-  await submit(document.querySelector('form'), () => document.body.textContent.includes('Cerrar sesión'), 'login ' + username)
+  await submit(document.querySelector('form'), () => document.querySelector('button[aria-label="Cerrar sesión"]'), 'login ' + username)
 }
 try {
   const load = (p) => server.ssrLoadModule('/src/' + p)
@@ -114,7 +114,7 @@ try {
   const session = await inAct(() => auth.obtenerSesion())
   assert.equal(session.negocios.length, 2)
   const shop = session.negocios[0], hardware = session.negocios[1]
-  await go('/negocio/roles', () => document.querySelectorAll('input[type="checkbox"]').length === 5)
+  await go('/negocio/roles', () => document.querySelectorAll('input[type="checkbox"]').length === shop.permisos.length)
   const roleForm = document.querySelector('form [name="nombre"]').closest('form')
   await change(roleForm, 'nombre', 'Lector integral')
   for (const label of roleForm.querySelectorAll('label')) {

@@ -55,6 +55,7 @@ def crear_producto(contexto, *, categoria_id, sku, nombre, unidad, precio_venta,
     contexto = resolver_contexto_negocio(contexto.membresia.usuario, contexto.negocio.pk, "crear_producto")
     negocio_id = contexto.negocio.pk
     categoria = _bloquear_categoria(negocio_id, categoria_id)
+    contexto = resolver_contexto_negocio(contexto.membresia.usuario, negocio_id, "crear_producto")
     if categoria is None or not categoria.activo:
         raise ValidationError({"categoria_id": [CATEGORIA_INVALIDA]})
     if stock_minimo is not None:
@@ -82,6 +83,7 @@ def actualizar_producto(contexto, producto_id, datos):
     # Orden de bloqueo compartido con el servicio de inventario: Existencia → (Categoría).
     if not Existencia.objects.select_for_update().filter(negocio_id=negocio_id, producto_id=producto_id).exists():
         raise NotFound()
+    contexto = resolver_contexto_negocio(contexto.membresia.usuario, negocio_id, "editar_producto")
     producto = Producto.objects.select_related("categoria").get(negocio_id=negocio_id, pk=producto_id)
 
     datos = {campo: valor for campo, valor in datos.items() if campo in CAMPOS_EDITABLES}
@@ -90,6 +92,7 @@ def actualizar_producto(contexto, producto_id, datos):
     activo_final = datos.get("activo", producto.activo)
     if cambia_categoria or activo_final:
         categoria = _bloquear_categoria(negocio_id, nueva_categoria_id)
+        contexto = resolver_contexto_negocio(contexto.membresia.usuario, negocio_id, "editar_producto")
         # Un producto inactivo puede conservar su categoría inactiva; moverlo o reactivarlo exige una activa.
         if categoria is None or not categoria.activo:
             raise ValidationError({"categoria_id": [CATEGORIA_INVALIDA]})

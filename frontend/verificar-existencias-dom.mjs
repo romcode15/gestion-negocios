@@ -44,6 +44,14 @@ try {
   assert.equal(botones.some((t) => /crear|editar|guardar|eliminar|ajustar/i.test(t)), false, 'No debe haber botones de escritura.')
   console.log('OK DOM tabla: muestra saldos con unidad y no hay botones de escritura.')
 
+  const categoria = document.querySelector('input[name="categoria_id"]')
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(categoria, '9007199254740993')
+    categoria.dispatchEvent(new window.Event('input', { bubbles: true }))
+  })
+  await act(async () => document.querySelector('form[role="search"]').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })))
+  assert.match(document.body.textContent, /ID entero positivo válido/)
+
   await act(async () => { await store.login({ username: 'compartido', password: 'Demo-12345!' }) })
   await act(async () => root.render(h(Proveedor, null, h(ExistenciasPage))))
   await flush()

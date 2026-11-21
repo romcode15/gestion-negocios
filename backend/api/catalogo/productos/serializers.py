@@ -2,6 +2,7 @@ import re
 from decimal import Decimal
 
 from rest_framework import serializers
+from api.common.serializers import ProductoOpcionSerializer
 
 from api.catalogo.categorias.serializers import (
     BooleanoField,
@@ -45,10 +46,10 @@ class DecimalTextoField(serializers.CharField):
             raise serializers.ValidationError("Se excedió la precisión decimal permitida.")
         if valor < 0:
             raise serializers.ValidationError("El valor no puede ser negativo.")
-        cuantizado = valor.quantize(Decimal(1).scaleb(-self.escala))
-        if cuantizado >= Decimal(10) ** (self.precision - self.escala):
+        # Validar el rango antes de cuantizar: un entero enorme no debe lanzar InvalidOperation.
+        if valor >= Decimal(10) ** (self.precision - self.escala):
             raise serializers.ValidationError("El valor está fuera de rango.")
-        return cuantizado
+        return valor.quantize(Decimal(1).scaleb(-self.escala))
 
     def to_representation(self, value):
         return f"{value:.{self.escala}f}"
@@ -96,15 +97,6 @@ class ProductoSerializer(serializers.ModelSerializer):
             "id", "negocio_id", "categoria_id", "categoria_nombre", "sku", "nombre", "descripcion",
             "unidad", "precio_venta", "stock_minimo", "activo",
         ]
-        read_only_fields = fields
-
-
-class ProductoOpcionSerializer(serializers.ModelSerializer):
-    negocio_id = serializers.IntegerField(read_only=True)
-
-    class Meta:
-        model = Producto
-        fields = ["id", "negocio_id", "sku", "nombre", "unidad"]
         read_only_fields = fields
 
 

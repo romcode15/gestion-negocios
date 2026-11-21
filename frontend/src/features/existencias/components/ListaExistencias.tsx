@@ -37,7 +37,7 @@ export function ListaExistencias() {
     if (s) f.search = s
     const c = categoriaTexto.trim()
     if (c) {
-      if (!/^[1-9]\d*$/.test(c)) { setErrorCategoria(['Usa un ID entero positivo.']); return }
+      if (!/^[1-9]\d*$/.test(c) || !Number.isSafeInteger(Number(c))) { setErrorCategoria(['Usa un ID entero positivo válido.']); return }
       f.categoria_id = Number(c)
     }
     setErrorCategoria([])
