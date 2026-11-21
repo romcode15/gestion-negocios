@@ -130,3 +130,36 @@ class RegistrarAjusteSerializer(EntradaEstrictaSerializer):
 
     def to_representation(self, instance):
         return MovimientoSerializer(instance, context=self.context).data
+
+
+class FiltrosMovimientoSerializer(serializers.Serializer):
+    producto_id = serializers.IntegerField(min_value=1, required=False)
+    tipo = serializers.ChoiceField(choices=["entrada", "salida", "ajuste"], required=False)
+    search = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
+    desde = serializers.DateTimeField(required=False)
+    hasta = serializers.DateTimeField(required=False)
+
+    def __init__(self, *args, query_params=None, **kwargs):
+        self.query_params = query_params
+        super().__init__(*args, **kwargs)
+
+    def to_internal_value(self, data):
+        permitidos = set(self.fields) | {"page"}
+        errores = {}
+        for clave in self.query_params.keys():
+            if clave not in permitidos:
+                errores[clave] = ["Parámetro no permitido."]
+            elif len(self.query_params.getlist(clave)) > 1:
+                errores[clave] = ["Parámetro repetido."]
+        if errores:
+            raise serializers.ValidationError(errores)
+        return super().to_internal_value(data)
+
+    def validate(self, attrs):
+        desde = attrs.get("desde")
+        hasta = attrs.get("hasta")
+        if desde is not None and hasta is not None and desde >= hasta:
+            raise serializers.ValidationError({"hasta": ["Debe ser posterior a desde."]})
+        if "search" in attrs:
+            attrs["search"] = attrs["search"].strip()
+        return attrs

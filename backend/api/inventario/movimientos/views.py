@@ -1,12 +1,21 @@
 from rest_framework import generics
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
 
 from api.common.access import exigir_usuario_activo, resolver_contexto_negocio
 from api.common.schema import ErrorSerializer
+from api.common.pagination import PaginacionPagina
+from inventario.models import MovimientoInventario
 
-from .serializers import MovimientoSerializer, RegistrarAjusteSerializer, RegistrarMovimientoSerializer
+from .selectors import movimientos_del_negocio
+from .serializers import (
+    FiltrosMovimientoSerializer,
+    MovimientoSerializer,
+    RegistrarAjusteSerializer,
+    RegistrarMovimientoSerializer,
+)
 
 
 _PERMISOS = {
@@ -15,11 +24,21 @@ _PERMISOS = {
 }
 
 
+class PaginacionMovimientos(PaginacionPagina):
+    def paginate_queryset(self, queryset, request, view=None):
+        return PageNumberPagination.paginate_queryset(self, queryset, request, view)
+
+
 class TienePermisoMovimiento(BasePermission):
     """Resuelve el permiso de escritura después de conocer el tipo solicitado."""
 
     def has_permission(self, request, view):
         exigir_usuario_activo(request.user)
+        if request.method == "GET":
+            view.contexto_negocio = resolver_contexto_negocio(
+                request.user, view.kwargs["negocio_id"], "listar_movimientos",
+            )
+            return True
         tipo = request.data.get("tipo") if isinstance(request.data, dict) else None
         permiso = _PERMISOS.get(tipo)
         view.contexto_negocio = resolver_contexto_negocio(
@@ -28,15 +47,51 @@ class TienePermisoMovimiento(BasePermission):
         return True
 
 
-class RegistrarMovimientoView(generics.CreateAPIView):
+class RegistrarMovimientoView(generics.ListCreateAPIView):
     permission_classes = [TienePermisoMovimiento]
     serializer_class = RegistrarMovimientoSerializer
-    http_method_names = ["post", "options"]
+    pagination_class = PaginacionMovimientos
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_serializer_class(self):
+        return MovimientoSerializer if self.request.method in ("GET", "HEAD") else RegistrarMovimientoSerializer
+
+    def filtros(self):
+        serializer = FiltrosMovimientoSerializer(
+            data=self.request.query_params.dict(), query_params=self.request.query_params,
+        )
+        serializer.is_valid(raise_exception=True)
+        return serializer.validated_data
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return MovimientoInventario.objects.none()
+        return movimientos_del_negocio(self.contexto_negocio, **self.filtros())
 
     def get_serializer_context(self):
         contexto = super().get_serializer_context()
         contexto["contexto_negocio"] = self.contexto_negocio
         return contexto
+
+    @extend_schema(
+        tags=["Movimientos"],
+        summary="Consultar historial de movimientos",
+        description=(
+            "Requiere listar_movimientos. Filtra por producto, tipo, texto y rango "
+            "temporal; devuelve el historial inmutable del negocio en orden descendente."
+        ),
+        parameters=[
+            OpenApiParameter("producto_id", OpenApiTypes.INT),
+            OpenApiParameter("tipo", OpenApiTypes.STR, enum=["entrada", "salida", "ajuste"]),
+            OpenApiParameter("search", OpenApiTypes.STR),
+            OpenApiParameter("desde", OpenApiTypes.DATETIME),
+            OpenApiParameter("hasta", OpenApiTypes.DATETIME),
+            OpenApiParameter("page", OpenApiTypes.INT),
+        ],
+        responses={200: MovimientoSerializer(many=True), 400: ErrorSerializer, 403: ErrorSerializer},
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
     @extend_schema(
         tags=["Movimientos"],
