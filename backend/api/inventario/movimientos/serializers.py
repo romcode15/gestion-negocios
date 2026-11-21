@@ -50,6 +50,31 @@ class CantidadSerializerField(serializers.Field):
         return format(value, ".3f")
 
 
+@extend_schema_field(serializers.CharField)
+class StockObjetivoSerializerField(serializers.Field):
+    default_error_messages = {
+        "invalid": "Envía una cadena decimal sin coma ni exponentes.",
+        "precision": "El stock objetivo admite como máximo tres decimales.",
+        "negative": "El stock objetivo debe ser mayor o igual a cero.",
+    }
+
+    def to_internal_value(self, data):
+        if not isinstance(data, str) or not _PATRON_DECIMAL.fullmatch(data):
+            self.fail("invalid")
+        try:
+            valor = Decimal(data)
+        except Exception:
+            self.fail("invalid")
+        if not valor.is_finite() or -valor.as_tuple().exponent > 3:
+            self.fail("precision")
+        if valor < 0:
+            self.fail("negative")
+        return valor
+
+    def to_representation(self, value):
+        return format(value, ".3f")
+
+
 class ProductoOpcionSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     negocio_id = serializers.IntegerField(read_only=True)
@@ -85,6 +110,22 @@ class RegistrarMovimientoSerializer(EntradaEstrictaSerializer):
         return registrar_movimiento(
             self.context["contexto_negocio"],
             **validated_data,
+        )
+
+    def to_representation(self, instance):
+        return MovimientoSerializer(instance, context=self.context).data
+
+
+class RegistrarAjusteSerializer(EntradaEstrictaSerializer):
+    producto_id = serializers.IntegerField(min_value=1)
+    stock_objetivo = StockObjetivoSerializerField()
+    version_esperada = serializers.IntegerField(min_value=0)
+    motivo = TextoField(max_length=255)
+    clave_operacion = serializers.UUIDField()
+
+    def create(self, validated_data):
+        return registrar_movimiento(
+            self.context["contexto_negocio"], tipo="ajuste", **validated_data,
         )
 
     def to_representation(self, instance):
