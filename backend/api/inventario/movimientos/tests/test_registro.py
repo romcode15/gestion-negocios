@@ -126,13 +126,23 @@ class RegistroMovimientoTests(TestCase):
         self.assert_error(response, 403)
         self.assertEqual((self.saldo(), MovimientoInventario.objects.count()), antes)
 
+    def test_tipos_json_invalidos_no_generan_error_interno_ni_escritura(self):
+        for tipo in ([], {}, True, 1):
+            with self.subTest(tipo=tipo):
+                self.assert_error(self.post(tipo=tipo), 400, campos=["tipo"])
+        for producto_id in (True, str(self.producto.pk), float(self.producto.pk)):
+            with self.subTest(producto_id=producto_id):
+                self.assert_error(self.post(producto_id=producto_id), 400, campos=["producto_id"])
+        self.assertEqual(self.saldo(), Decimal("0.000"))
+        self.assertEqual(MovimientoInventario.objects.count(), 0)
+
 
 @override_settings(DEBUG=True)
 class DocumentacionRegistroMovimientoTests(TestCase):
-    def test_swagger_documenta_solo_post_movimientos(self):
+    def test_swagger_documenta_get_y_post_movimientos(self):
         schema = APIClient().get("/api/schema/?format=json").data
         ruta = schema["paths"]["/api/v1/negocios/{negocio_id}/movimientos/"]
-        self.assertEqual(set(ruta), {"post"})
+        self.assertEqual(set(ruta), {"get", "post"})
         self.assertEqual(set(schema["components"]["schemas"]["RegistrarMovimientoRequest"]["properties"]), {
             "producto_id", "tipo", "cantidad", "motivo", "clave_operacion",
         })
