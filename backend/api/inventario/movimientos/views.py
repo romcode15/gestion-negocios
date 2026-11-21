@@ -6,7 +6,7 @@ from drf_spectacular.utils import extend_schema
 from api.common.access import exigir_usuario_activo, resolver_contexto_negocio
 from api.common.schema import ErrorSerializer
 
-from .serializers import MovimientoSerializer, RegistrarMovimientoSerializer
+from .serializers import MovimientoSerializer, RegistrarAjusteSerializer, RegistrarMovimientoSerializer
 
 
 _PERMISOS = {
@@ -47,6 +47,44 @@ class RegistrarMovimientoView(generics.CreateAPIView):
             "mediante el servicio transaccional común."
         ),
         request=RegistrarMovimientoSerializer,
+        responses={201: MovimientoSerializer, 400: ErrorSerializer, 403: ErrorSerializer,
+                   409: ErrorSerializer},
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        movimiento = serializer.save()
+        return Response(MovimientoSerializer(movimiento, context=self.get_serializer_context()).data, status=201)
+
+
+class TienePermisoAjuste(BasePermission):
+    def has_permission(self, request, view):
+        exigir_usuario_activo(request.user)
+        view.contexto_negocio = resolver_contexto_negocio(
+            request.user, view.kwargs["negocio_id"], "ajustar_inventario",
+        )
+        return True
+
+
+class RegistrarAjusteView(generics.CreateAPIView):
+    permission_classes = [TienePermisoAjuste]
+    serializer_class = RegistrarAjusteSerializer
+    http_method_names = ["post", "options"]
+
+    def get_serializer_context(self):
+        contexto = super().get_serializer_context()
+        contexto["contexto_negocio"] = self.contexto_negocio
+        return contexto
+
+    @extend_schema(
+        tags=["Movimientos"],
+        summary="Fijar el stock mediante un ajuste",
+        description=(
+            "Requiere sesión, CSRF y ajustar_inventario. Recibe el stock objetivo "
+            "y la versión leída; el servicio transaccional común valida el saldo "
+            "y evita sobrescribir una versión desactualizada."
+        ),
+        request=RegistrarAjusteSerializer,
         responses={201: MovimientoSerializer, 400: ErrorSerializer, 403: ErrorSerializer,
                    409: ErrorSerializer},
     )
