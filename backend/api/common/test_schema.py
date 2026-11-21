@@ -46,6 +46,8 @@ class DocumentacionTests(SimpleTestCase):
             "/api/v1/negocios/{negocio_id}/productos/",
             "/api/v1/negocios/{negocio_id}/productos/{producto_id}/",
             "/api/v1/negocios/{negocio_id}/productos/opciones/",
+            "/api/v1/negocios/{negocio_id}/existencias/",
+            "/api/v1/negocios/{negocio_id}/existencias/{producto_id}/",
         })
         components = schema["components"]["schemas"]
         request = components["CrearUsuarioRequest"]["properties"]
