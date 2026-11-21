@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/Button'
 import { PageHeading } from '../../../components/ui/PageHeading'
 import { RegistrarMovimientoModal } from '../components/RegistrarMovimientoModal'
 import { AjusteInventarioModal } from '../components/AjusteInventarioModal'
+import { HistorialMovimientos } from '../components/HistorialMovimientos'
 import { notificarHistorialActualizado } from '../components/eventos'
 import type { Movimiento } from '../types'
 
@@ -66,6 +67,7 @@ function ContenidoMovimientos() {
       onRegistrado={trasRegistrar} onClose={() => setAccion(null)} />}
     {accion === 'ajuste' && <AjusteInventarioModal negocioId={negocioId}
       onAjustado={trasRegistrar} onClose={() => setAccion(null)} />}
-    <AvisoHistorialPendiente />
+    {puedeListar && negocioId !== null && <HistorialMovimientos />}
+    {!puedeListar && <p className="feedback" role="note">El historial requiere el permiso listar_movimientos.</p>}
   </>
 }
