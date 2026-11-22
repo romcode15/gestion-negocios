@@ -79,6 +79,77 @@ class DocumentacionTests(SimpleTestCase):
     def test_esquema_valido_sin_advertencias(self):
         call_command("spectacular", validate=True, fail_on_warn=True, stdout=StringIO(), stderr=StringIO())
 
+    def test_contrato_completo_fase2_solicitudes_respuestas_y_opciones(self):
+        schema = APIClient().get("/api/schema/?format=json").data
+        components = schema["components"]["schemas"]
+        prefix = "/api/v1/negocios/{negocio_id}/"
+
+        def resolver(value):
+            while "$ref" in value:
+                value = components[value["$ref"].split("/")[-1]]
+            return value
+
+        # (tipo de salida, operaciones); nombres de componentes PATCH pueden variar,
+        # pero los campos públicos de cada entrada deben seguir este contrato.
+        casos = {
+            "categorias/": {"get": ("Categoria", None), "post": ("Categoria", {"nombre", "descripcion"})},
+            "categorias/{categoria_id}/": {
+                "get": ("Categoria", None), "patch": ("Categoria", {"nombre", "descripcion", "activo"}),
+            },
+            "categorias/opciones/": {"get": ("CategoriaOpcion", None)},
+            "productos/": {"get": ("Producto", None), "post": ("Producto", {
+                "categoria_id", "sku", "nombre", "descripcion", "unidad", "precio_venta", "stock_minimo",
+            })},
+            "productos/{producto_id}/": {"get": ("Producto", None), "patch": ("Producto", {
+                "categoria_id", "sku", "nombre", "descripcion", "unidad", "precio_venta", "stock_minimo", "activo",
+            })},
+            "productos/opciones/": {"get": ("ProductoOpcion", None)},
+            "existencias/": {"get": ("Existencia", None)},
+            "existencias/{producto_id}/": {"get": ("Existencia", None)},
+            "movimientos/": {"get": ("Movimiento", None), "post": ("Movimiento", {
+                "producto_id", "tipo", "cantidad", "motivo", "clave_operacion",
+            })},
+            "ajustes/": {"post": ("Movimiento", {
+                "producto_id", "stock_objetivo", "version_esperada", "motivo", "clave_operacion",
+            })},
+        }
+        for ruta, metodos in casos.items():
+            path = schema["paths"][prefix + ruta]
+            self.assertEqual(set(path), set(metodos), ruta)
+            for metodo, (salida, entrada) in metodos.items():
+                with self.subTest(ruta=ruta, metodo=metodo):
+                    operation = path[metodo]
+                    self.assertIn({"cookieAuth": []}, operation["security"])
+                    self.assertIn("403", operation["responses"])
+                    status = "201" if metodo == "post" else "200"
+                    response = resolver(operation["responses"][status]["content"]["application/json"]["schema"])
+                    if metodo == "get" and "{" not in ruta:
+                        self.assertEqual(set(response["properties"]), {"count", "next", "previous", "results"})
+                        response = resolver(response["properties"]["results"]["items"])
+                    self.assertEqual(response, components[salida])
+                    if entrada is not None:
+                        body = resolver(operation["requestBody"]["content"]["application/json"]["schema"])
+                        self.assertEqual(set(body["properties"]), entrada)
+                        requeridos = entrada - {"descripcion", "stock_minimo"} if metodo == "post" else set()
+                        self.assertEqual(set(body.get("required", [])), requeridos)
+                        self.assertFalse({"negocio_id", "usuario_id", "saldo_anterior", "saldo_posterior"} & entrada)
+                        for campo in {"cantidad", "stock_objetivo", "precio_venta", "stock_minimo"} & entrada:
+                            self.assertEqual(resolver(body["properties"][campo])["type"], "string")
+                    else:
+                        self.assertNotIn("requestBody", operation)
+
+        for component, campos in {
+            "CategoriaOpcion": {"id", "negocio_id", "nombre"},
+            "ProductoOpcion": {"id", "negocio_id", "sku", "nombre", "unidad"},
+            "Existencia": {"id", "negocio_id", "producto", "cantidad", "stock_minimo", "bajo_minimo", "version"},
+            "Movimiento": {"id", "negocio_id", "producto", "usuario", "tipo", "cantidad", "saldo_anterior", "saldo_posterior", "motivo", "clave_operacion", "creado_en"},
+        }.items():
+            self.assertEqual(set(components[component]["properties"]), campos)
+        for ruta in ("movimientos/", "ajustes/"):
+            conflict = schema["paths"][prefix + ruta]["post"]["responses"]["409"]
+            self.assertEqual(set(resolver(conflict["content"]["application/json"]["schema"])["properties"]),
+                             {"code", "detail", "errors"})
+
 
 @override_settings(DEBUG=True)
 class FlujoDocumentacionTests(TestCase):

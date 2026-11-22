@@ -51,6 +51,8 @@ def actualizar_categoria(contexto, categoria_id, datos):
     ).first()
     if categoria is None:
         raise NotFound()
+    # El acceso puede cambiar mientras esperamos el bloqueo de la categoría.
+    contexto = resolver_contexto_negocio(contexto.membresia.usuario, contexto.negocio.pk, "editar_categoria")
 
     if "nombre" in datos and nombre_en_uso(contexto.negocio.pk, datos["nombre"], excluir_id=categoria.pk):
         raise ValidationError({"nombre": [NOMBRE_EN_USO]})

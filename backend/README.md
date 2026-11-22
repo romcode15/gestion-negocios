@@ -19,6 +19,8 @@ cd backend
 
 Si todavía no existe .venv o .env, prepararlos primero según el README principal. Nunca sobrescribir un .env existente con valores de otro integrante.
 
+Al actualizar una base de fase 1, `migrate` aplica la migración nueva de permisos de fase 2. Agrega once permisos de negocio y los asigna a los administradores de negocio predefinidos existentes; conserva roles personalizados y los permisos de plataforma. Los negocios nuevos reciben el mismo catálogo mediante la preparación idempotente existente. No editar migraciones aplicadas ni otorgar permisos manualmente a todos los roles.
+
 ## Preparar la cuenta inicial
 
 ```powershell
@@ -106,10 +108,20 @@ node tools/verificar_swagger.mjs
 
 El primer comando verifica migraciones y toda la suite en PostgreSQL temporal aislado. El segundo, opcional y con Node.js, comprueba el interceptor JavaScript de Swagger y la lectura del token rotado; no exige instalar paquetes npm ni abre un navegador.
 
+Para ejecutar únicamente el cierre de backend B3, conservando una base temporal aislada:
+
+```powershell
+.\.venv\Scripts\python.exe tools/verificar_postgres.py tests.integration.test_fase2
+```
+
+Estas pruebas crean cuentas, negocios, categorías y productos por API con sesiones y CSRF reales. Comprueban entradas/salidas/ajustes, auditoría, cuenta compartida, errores sin escrituras parciales, idempotencia y peticiones concurrentes con conexiones PostgreSQL distintas. La suite completa añade el contrato OpenAPI de las quince operaciones de fase 2 y las regresiones de fase 1. Las etiquetas opcionales permiten acotar una ejecución, pero no sustituyen la suite completa antes de integrar.
+
 Para ejecutar también los formularios React con HTTP real, instalar primero las dependencias de frontend (`npm.cmd ci`) y ejecutar desde backend:
 
 ```powershell
 .\.venv\Scripts\python.exe tools/verificar_postgres.py --integracion-frontend
 ```
 
-La opción ejecuta las pruebas del backend y luego levanta Django y Vite en puertos temporales. Verifica los formularios con DOM automatizado contra PostgreSQL: cuentas, dos negocios, roles, altas de membresía, cambio de rol, último administrador, aislamiento, recarga y cierre de sesión. Usa cuentas y contraseña temporales; no modifica la base del `.env` ni abre un navegador. La revisión visual manual se realiza desde React en modo HTTP según el [README frontend](../frontend/README.md).
+La opción ejecuta las pruebas del backend y luego levanta Django y Vite en puertos temporales. Verifica los formularios con DOM automatizado contra PostgreSQL: cuentas, dos negocios, roles, altas de membresía, cambio de rol, último administrador, aislamiento, recarga y cierre de sesión. También verifica categorías, productos, existencias, entradas/salidas, ajustes, conflictos de versión e historial de fase 2. Usa cuentas y contraseña temporales; no modifica la base del `.env` ni abre un navegador. La revisión visual manual se realiza desde React en modo HTTP según el [README frontend](../frontend/README.md).
+
+El cierre backend #48 no espera el cierre frontend #57. La evidencia de API, esquema y concurrencia permite continuar F3; Henry conserva la revisión visual y los criterios de cierre de frontend. Registrar los resultados del comando integral en el PR y verificar ambos cierres antes de considerar terminada la fase completa.
