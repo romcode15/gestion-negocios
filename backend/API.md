@@ -1,5 +1,25 @@
 # Base de API y seguridad · Issue #5
 
+## Integración y cierre backend · Issue #48
+
+Las APIs de categorías, productos, existencias, movimientos y ajustes están integradas. El [contrato común de fase 2](../fase2.md) sigue siendo la referencia de campos, filtros, permisos y reglas. Las verificaciones del cierre se encuentran en:
+
+| Verificación | Archivo | Qué demuestra |
+|---|---|---|
+| Flujo entre módulos por API | `tests/integration/test_fase2.py` | Arranque de plataforma, negocio/catálogo, existencia cero, movimientos y auditoría con sesiones y CSRF. |
+| Acceso y errores | El mismo archivo | Cuenta compartida con permisos distintos por negocio, ausencia de acceso implícito de plataforma, inactivos, tenant ajeno y rechazo sin cambios parciales. |
+| Peticiones concurrentes | El mismo archivo | Entradas acumuladas, salidas sin sobregiro, ajustes con versión, reintentos simultáneos y colisión de clave entre productos con rollback del perdedor. |
+| Contrato público | `api/common/test_schema.py` | Rutas/métodos, inputs obligatorios y opcionales, respuestas, opciones, paginación, decimales string y conflictos 409. |
+| Formularios conectados | `frontend/verificar-integracion.mjs` | React con HTTP real hacia Django/PostgreSQL; complementa el cierre backend. |
+
+Las pruebas de concurrencia llaman los endpoints completos y registran los PID de PostgreSQL dentro de cada transacción. Las barreras sincronizan puntos de la ejecución para reproducir las carreras; no sustituyen autenticación, consultas, bloqueo ni persistencia. La prueba de fallo de guardado inyecta una excepción después de modificar el saldo para demostrar que la petición revierte saldo, versión e historial, sin convertir fallos inesperados en validaciones.
+
+La edición de categoría vuelve a resolver la autorización después de esperar el bloqueo, igual que las otras escrituras sensibles. La paginación admite páginas numéricas, no el alias interno `last` de DRF.
+
+Ejecutar desde backend `tools/verificar_postgres.py` para la suite completa, o añadir `tests.integration.test_fase2` para una verificación acotada. Ambas opciones preparan PostgreSQL temporal, aplican migraciones y comprueban que no falten migraciones; no utilizan la base habitual del `.env`. Instalación, actualización y comandos completos: [README](README.md).
+
+Para pruebas independientes de un módulo, importar `crear_producto_prueba` o `crear_dos_catalogos_prueba` desde `tests.support.fase2`; `crear_movimiento_prueba` prepara saldos e historial coherentes para pruebas de lectura. La [guía backend](fase2.md) describe estos helpers y los servicios comunes. El cierre B3 usa su escenario `EscenarioAPI` para recorrer las APIs ya integradas; no convertir ese escenario en una dependencia de los módulos ni usar las fábricas para escribir datos de producción.
+
 ## Existencias · Issue #44
 
 La consulta de fase 2 está implementada bajo `/api/v1/negocios/{negocio_id}/existencias/`:

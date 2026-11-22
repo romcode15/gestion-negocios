@@ -56,6 +56,8 @@ def main():
     parser.add_argument("--pg-bin", type=Path, help="Directorio de initdb, pg_ctl y psql.")
     parser.add_argument("--integracion-frontend", action="store_true",
                         help="Después de los tests, probar los formularios React con HTTP real.")
+    parser.add_argument("test_labels", nargs="*",
+                        help="Etiquetas Django opcionales; sin etiquetas se ejecuta toda la suite.")
     options = parser.parse_args()
     suffix = ".exe" if os.name == "nt" else ""
     executable = shutil.which("initdb")
@@ -106,7 +108,7 @@ def main():
             django("check")
             django("migrate", "--noinput")
             django("makemigrations", "--check", "--dry-run")
-            django("test", "--noinput", "--verbosity", "2")
+            django("test", *options.test_labels, "--noinput", "--verbosity", "2")
             if options.integracion_frontend:
                 verificar_frontend(backend, env)
         finally:
