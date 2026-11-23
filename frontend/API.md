@@ -262,5 +262,68 @@ errores para detectar cambios parciales. Los permisos nuevos se buscan por
 código, sin fijar sus IDs. `verificar-http-fase2.mjs` sustituye fetch para
 comprobar rutas, query strings, payloads, signal, CSRF y ausencia de reintentos.
 `npm.cmd test` incluye ambas pruebas y las regresiones de fase 1.
-Queda pendiente verificar estos endpoints contra Django/PostgreSQL mediante
-la entrega de integración F3; los resultados del mock no prueban persistencia real.
+La integración real se verifica por separado mediante F3, descrita a continuación;
+los resultados del mock por sí solos no prueban persistencia real.
+
+## F3 · Integración HTTP real (#57)
+
+Base revisada: `dev` en `d4afe3c`. Incluye F6 (#53, commits `e1b075f`,
+`96e4d8f`, `41c4933`, integrado en PR #74), F9 (#56, PR #67) y B3 (#48,
+PR #76), además de sus dependencias. B3 conserva sus pruebas propias y no
+depende de este verificador frontend.
+
+Desde `backend`, con Python/dependencias y PostgreSQL instalados:
+
+```powershell
+.\.venv\Scripts\python.exe tools/verificar_postgres.py --integracion-frontend
+```
+
+El comando crea un clúster y una base temporales, aplica migraciones y ejecuta
+la suite backend. Después prepara una cuenta temporal de plataforma y arranca
+Django y Vite en puertos libres. `verificar-integracion.mjs` renderiza la
+aplicación React en jsdom en modo HTTP. Su adaptador de fetch reenvía las
+solicitudes por el proxy real de Vite y conserva cookies y Origin; los cuerpos,
+estados y errores proceden de Django, sin respuestas de API inventadas.
+Las cuentas, roles, negocios y catálogo siguientes se crean mediante los servicios
+y formularios reales. Las contraseñas temporales no se imprimen ni se guardan
+en documentos; las cuentas demo de mock no se importan a PostgreSQL.
+
+| Caso | Comprobación |
+|---|---|
+| Fase 1 | Login/CSRF, plataforma, roles, dos modalidades de membresía, último administrador, mínimos, recarga y logout |
+| Catálogo | Alta/edición en modales, duplicado con datos conservados y stock inicial cero |
+| Inventario | Entrada/salida/ajuste persistidos, saldo insuficiente y conflicto de versión con actualización explícita |
+| Respuesta perdida | Django confirma; se interrumpe la entrega al cliente; reintento manual conserva UUID y devuelve el mismo registro |
+| CSRF | Se omite una cabecera para obtener el 403 real, se recupera el token y se repite manualmente sin escritura parcial |
+| Envío único | Dos submit seguidos y una respuesta retenida producen un único POST; busy bloquea cierre por Escape |
+| Permiso mínimo | Crear producto con opciones sin listar catálogo; entrada/ajuste sin listados; historial sin consultar opciones de productos |
+| Sin permiso | Escritura denegada y rechazo de acceso a otro negocio; no se elevan roles para ejecutar estas acciones |
+| Inactivos | Conservan saldo/historial; un movimiento nuevo falla y un reintento confirmado devuelve el original |
+| Contexto ajeno | Producto homónimo en otro negocio; ID ajeno 404/relación ajena 400 y saldo/historial intactos |
+| Contexto y sesión | Modal desmontado al cambiar negocio o salir, respuesta anterior descartada y recarga con datos persistidos |
+
+Para las respuestas tardías se retiene el cuerpo real ya recibido de Django;
+no se añade latencia a producción ni se supone que abortar HTTP deshace un commit.
+Las verificaciones de error comparan saldo, versión e historial antes/después.
+Al terminar, un proceso Python con otra conexión consulta los modelos y concilia
+todos los deltas con los saldos, cuenta versiones y comprueba que reintento y
+doble envío dejaron un solo movimiento. Los servidores y el clúster temporal
+se cierran en bloques `finally`, también ante fallos.
+
+Resultado automatizado del 23/11/2026: suite frontend, lint, build y ejecución
+React → Vite → Django → PostgreSQL correctas. La suite backend contiene 307
+pruebas. La revisión de layout en navegador se registra por separado en
+[COMPONENTES.md](COMPONENTES.md); jsdom no acredita apariencia ni layout móvil.
+
+Para repetir la revisión visual con los datos temporales del flujo, definir
+`INTEGRACION_PASSWORD` en la terminal con una contraseña exclusivamente de prueba,
+sin publicarla ni guardarla en el repositorio, y ejecutar:
+
+```powershell
+.\.venv\Scripts\python.exe tools/verificar_postgres.py --integracion-frontend --revision-visual
+```
+
+El comando muestra una URL temporal y la cuenta de revisión después de aprobar
+las pruebas. Abrir esa URL, usar el valor privado de la variable y revisar los
+modales. Pulsar Enter en la terminal al terminar elimina la base temporal.
+No usar credenciales de producción para esta variable ni para estas pruebas.

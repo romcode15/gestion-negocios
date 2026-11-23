@@ -25,14 +25,47 @@ originals.set('requestAnimationFrame', Object.getOwnPropertyDescriptor(globalThi
 Object.defineProperty(globalThis, 'requestAnimationFrame', { configurable: true, value: (fn) => setTimeout(fn, 0) })
 const nativeFetch = globalThis.fetch
 const requests = []
+// Instrumentación de red: todas las respuestas proceden de Django. Solo se
+// retiene una respuesta ya recibida, se pierde su entrega o se omite un header.
+let intercept = null
+const releases = new Set()
+function nextResponse(matches, receive) {
+  assert.equal(intercept, null, 'Ya hay una intervención de red pendiente.')
+  intercept = { matches, receive }
+}
+function holdNext(matches) {
+  let release, started
+  const waiting = new Promise((resolve) => { release = resolve })
+  const received = new Promise((resolve) => { started = resolve })
+  nextResponse(matches, async (response) => {
+    // Consumir el cuerpo real antes de cambiar el contexto y abortar su signal.
+    const buffered = await response.clone().arrayBuffer()
+    started()
+    await waiting
+    return new Response(buffered, { status: response.status, headers: response.headers })
+  })
+  releases.add(release)
+  return { received, release: () => { releases.delete(release); release() } }
+}
+let omitCsrf = false
 globalThis.fetch = async (path, options = {}) => {
   if (typeof path !== 'string' || !path.startsWith('/api/')) return nativeFetch(path, options)
   const headers = new Headers(options.headers)
   headers.set('Cookie', dom.cookieJar.getCookieStringSync(origin))
   headers.set('Origin', origin)
+  if (omitCsrf && options.method === 'POST' && path.includes('/movimientos/')) {
+    headers.delete('X-CSRFToken')
+    omitCsrf = false
+  }
   const response = await nativeFetch(origin + path, { ...options, headers })
   for (const cookie of response.headers.getSetCookie()) dom.cookieJar.setCookieSync(cookie, origin)
-  requests.push({ path, method: options.method ?? 'GET', status: response.status })
+  const request = { path, method: options.method ?? 'GET', status: response.status }
+  requests.push(request)
+  if (intercept?.matches(request)) {
+    const current = intercept
+    intercept = null
+    return current.receive(response)
+  }
   return response
 }
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -59,7 +92,8 @@ const field = (container, name) => {
 async function change(container, name, value) {
   const element = field(container, name)
   await act(async () => {
-    const prototype = element.tagName === 'SELECT' ? window.HTMLSelectElement.prototype : window.HTMLInputElement.prototype
+    const prototype = element.tagName === 'SELECT' ? window.HTMLSelectElement.prototype
+      : element.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype
     Object.getOwnPropertyDescriptor(prototype, 'value').set.call(element, value)
     element.dispatchEvent(new window.Event(element.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }))
   })
@@ -258,11 +292,16 @@ try {
   await change(dialog(), 'motivo', 'Salida HTTP')
   await submit(dialog().querySelector('form'), () => !dialog(), 'salida desde modal')
   assert.equal((await stock()).cantidad, '2.000')
+  const antesSalidaFallida = {
+    saldo: await stock(), historial: await inAct(() => movimientos.listarMovimientos(shop.id)),
+  }
   await abrirMovimiento('salida')
   await change(dialog(), 'cantidad', '3.000')
   await change(dialog(), 'motivo', 'Salida insuficiente HTTP')
   await submit(dialog().querySelector('form'), () => dialog()?.textContent.includes('Saldo insuficiente'), 'error de saldo insuficiente')
   assert.equal((await stock()).cantidad, '2.000')
+  assert.deepEqual(await stock(), antesSalidaFallida.saldo)
+  assert.deepEqual(await inAct(() => movimientos.listarMovimientos(shop.id)), antesSalidaFallida.historial)
   await act(async () => dialog().querySelector('button[aria-label="Cerrar diálogo"]').click())
   await act(async () => document.querySelector('button[aria-label="Ajustar inventario"]').click())
   await until(() => dialog()?.querySelector('select[name="producto_id"] option[value="' + producto.id + '"]'), 'productos para ajuste')
@@ -286,6 +325,11 @@ try {
   assert.equal((await stock()).version, 5)
   assert.equal((await inAct(() => movimientos.listarMovimientos(shop.id))).count, 5)
   await inAct(() => productos.actualizarProducto(shop.id, producto.id, { activo: false }))
+  const inactiveBefore = { saldo: await stock(), historial: await inAct(() => movimientos.listarMovimientos(shop.id)) }
+  assert.equal((await inAct(() => movimientos.registrarMovimiento(shop.id, repetible))).id, movimiento.id)
+  await inAct(() => assert.rejects(() => movimientos.registrarMovimiento(shop.id,
+    { ...repetible, clave_operacion: crypto.randomUUID() }), (e) => e.code === 'validation_error' && Array.isArray(e.errors.producto_id)))
+  assert.deepEqual({ saldo: await stock(), historial: await inAct(() => movimientos.listarMovimientos(shop.id)) }, inactiveBefore)
   const stockOnly = await inAct(() => roles.crearRol(shop.id, { nombre: 'Solo stock HTTP',
     permiso_ids: [permissions.find((p) => p.codigo === 'consultar_existencias').id] }))
   await inAct(() => members.crearMembresia(shop.id, { username: 'integracion_stock', password, rol_id: stockOnly.id }))
@@ -299,10 +343,225 @@ try {
   await inAct(() => assert.rejects(() => existencias.listarExistencias(hardware.id), (e) => e.code === 'permission_denied'))
   await logout()
   console.log('OK fase 2 HTTP real: modales de categoría/producto, existencia cero, entradas/salidas, saldo insuficiente, ajuste y conflicto, historial, idempotencia y permiso mínimo de existencias.')
+
+  async function all(loader) {
+    const result = []
+    for (let page = 1; ; page++) {
+      const current = await inAct(() => loader({ page }))
+      result.push(...current.results)
+      if (!current.next) return result
+    }
+  }
+  const snapshot = async () => ({
+    saldo: await stock(), historial: await all((q) => movimientos.listarMovimientos(shop.id, q)),
+  })
+  const fail = (action, code, status) => inAct(() => assert.rejects(action,
+    (e) => e.code === code && e.status === status))
+  const closeDialog = async () => {
+    await act(async () => dialog().querySelector('button[aria-label="Cerrar diálogo"]').click())
+    await until(() => !dialog(), 'cerrar modal')
+  }
+  const inventoryPost = (r) => r.method === 'POST' && r.path.endsWith('/movimientos/')
+  await login('integracion_existente')
+  // Reactivar para las siguientes operaciones; el historial anterior no cambia.
+  await inAct(() => productos.actualizarProducto(shop.id, producto.id, { activo: true }))
+  const initialSnapshot = await snapshot()
+  await fail(() => categorias.actualizarCategoria(shop.id, categoria.id, { activo: false }), 'validation_error', 400)
+  await fail(() => productos.actualizarProducto(shop.id, producto.id, { unidad: 'unidad' }), 'validation_error', 400)
+  assert.deepEqual(await snapshot(), initialSnapshot)
+  assert.equal((await inAct(() => categorias.obtenerCategoria(shop.id, categoria.id))).activo, true)
+  assert.equal((await inAct(() => productos.obtenerProducto(shop.id, producto.id))).unidad, 'kg')
+
+  // Editar mediante los formularios reales y conservar datos ante duplicados.
+  await go('/negocio/categorias', () => document.querySelector('table')?.textContent.includes('Alimentos HTTP'))
+  await clickButton('Editar')
+  await until(() => dialog()?.querySelector('[name="descripcion"]'), 'editar categoría')
+  await change(dialog(), 'descripcion', 'Edición persistida F3')
+  await submit(dialog().querySelector('form'), () => !dialog(), 'guardar categoría')
+  assert.equal((await inAct(() => categorias.obtenerCategoria(shop.id, categoria.id))).descripcion, 'Edición persistida F3')
+  await clickButton('Crear categoría')
+  await change(dialog(), 'nombre', categoria.nombre)
+  await submit(dialog().querySelector('form'), () => dialog()?.querySelector('[aria-invalid="true"]'), 'nombre duplicado')
+  assert.equal(field(dialog(), 'nombre').value, categoria.nombre)
+  await closeDialog()
+  await go('/negocio/productos', () => document.querySelector('table')?.textContent.includes('HTTP-ARROZ'))
+  await clickButton('Editar')
+  await until(() => dialog()?.querySelector('[name="precio_venta"]'), 'editar producto')
+  await change(dialog(), 'precio_venta', '13.20')
+  await submit(dialog().querySelector('form'), () => !dialog(), 'guardar producto')
+  assert.equal((await inAct(() => productos.obtenerProducto(shop.id, producto.id))).precio_venta, '13.20')
+  assert.deepEqual(await stock(), initialSnapshot.saldo)
+
+  // Respuesta perdida después del commit: el formulario conserva su UUID.
+  await go('/negocio/movimientos', () => document.querySelector('button[aria-label="Registrar entrada"]'))
+  await abrirMovimiento('entrada')
+  await change(dialog(), 'cantidad', '0.125')
+  await change(dialog(), 'motivo', 'Respuesta perdida F3')
+  nextResponse(inventoryPost, async (response) => {
+    assert.equal(response.status, 201)
+    await response.arrayBuffer()
+    throw new TypeError('Entrega interrumpida después de confirmar en Django')
+  })
+  start = requests.length
+  const retryBefore = await snapshot()
+  await submit(dialog().querySelector('form'), () => dialog()?.textContent.includes('Reintentar'), 'fallo de entrega real')
+  const confirmed = await snapshot()
+  assert.equal(confirmed.historial.length, retryBefore.historial.length + 1)
+  assert.equal(requests.slice(start).filter(inventoryPost).length, 1, 'No debe reintentar automáticamente')
+  await clickButton('Reintentar')
+  await until(() => !dialog(), 'reintento manual con mismo UUID')
+  assert.deepEqual(await snapshot(), confirmed)
+  assert.equal(requests.slice(start).filter(inventoryPost).length, 2)
+
+  // CSRF real: omitir una cabecera, comprobar 403 y repetir manualmente.
+  await abrirMovimiento('entrada')
+  await change(dialog(), 'cantidad', '0.125')
+  await change(dialog(), 'motivo', 'CSRF recuperado F3')
+  const csrfBefore = await snapshot()
+  omitCsrf = true
+  start = requests.length
+  await submit(dialog().querySelector('form'), () => dialog()?.textContent.includes('Se renovó'), 'CSRF rechazado por Django')
+  assert.deepEqual(await snapshot(), csrfBefore)
+  assert.equal(requests.slice(start).filter(inventoryPost).length, 1)
+  assert.ok(requests.slice(start).some((r) => r.path.endsWith('/auth/csrf/') && r.status === 204))
+  await clickButton('Reintentar')
+  await until(() => !dialog(), 'reenvío manual tras CSRF')
+  assert.equal((await snapshot()).historial.length, csrfBefore.historial.length + 1)
+
+  // Busy y doble envío mientras Django ya confirmó y falta entregar la respuesta.
+  await abrirMovimiento('entrada')
+  await change(dialog(), 'cantidad', '0.125')
+  await change(dialog(), 'motivo', 'Envío único F3')
+  const heldWrite = holdNext(inventoryPost)
+  const busyForm = dialog().querySelector('form')
+  start = requests.length
+  await act(async () => {
+    busyForm.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }))
+    busyForm.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }))
+    await heldWrite.received
+  })
+  assert.equal(busyForm.getAttribute('aria-busy'), 'true')
+  assert.ok(dialog().querySelector('button[aria-label="Cerrar diálogo"]').disabled)
+  await act(async () => dialog().dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+  assert.ok(dialog())
+  await act(async () => heldWrite.release())
+  await until(() => !dialog(), 'respuesta de envío único')
+  assert.equal(requests.slice(start).filter(inventoryPost).length, 1)
+
+  // Las opciones funcionan sin permisos de listados generales.
+  const minimal = [
+    ['integracion_producto_minimo', ['crear_producto']],
+    ['integracion_entrada_minima', ['registrar_entrada']],
+    ['integracion_ajuste_minimo', ['ajustar_inventario']],
+    ['integracion_historial_minimo', ['listar_movimientos']],
+  ]
+  for (const [username, codes] of minimal) {
+    const permiso_ids = codes.map((code) => {
+      const permiso = permissions.find((p) => p.codigo === code)
+      assert.ok(permiso, 'Permiso no disponible: ' + code)
+      return permiso.id
+    })
+    const role = await inAct(() => roles.crearRol(shop.id, { nombre: username, permiso_ids }))
+    await inAct(() => members.crearMembresia(shop.id, { username, password, rol_id: role.id }))
+  }
+  const originalAdmin = (await all((q) => members.listarMembresias(shop.id, q))).find((m) => m.usuario.username === 'integracion_admin')
+  await inAct(() => members.cambiarRolMembresia(shop.id, originalAdmin.id, { rol_id: shop.rol_id }))
+  await logout()
+  start = requests.length
+  await login('integracion_producto_minimo')
+  await go('/negocio/productos', () => document.body.textContent.includes('Crear producto'))
+  await clickButton('Crear producto')
+  await until(() => dialog()?.querySelector('select[name="categoria_id"] option[value="' + categoria.id + '"]'), 'opciones con crear_producto')
+  for (const [name, value] of [['sku', 'SOLO-CREAR'], ['nombre', 'Producto mínimo F3'], ['categoria_id', String(categoria.id)], ['precio_venta', '1.00']]) await change(dialog(), name, value)
+  await submit(dialog().querySelector('form'), () => !dialog(), 'alta sin listados generales')
+  assert.equal(document.querySelector('table'), null)
+  assert.equal(requests.slice(start).some((r) => r.method === 'GET' && /\/(productos|categorias)\/\?/.test(r.path)), false)
+  await fail(() => productos.listarProductos(shop.id), 'permission_denied', 403)
+  await logout()
+  start = requests.length
+  await login('integracion_entrada_minima')
+  await go('/negocio/movimientos', () => document.querySelector('button[aria-label="Registrar entrada"]'))
+  await abrirMovimiento('entrada')
+  await change(dialog(), 'cantidad', '0.125')
+  await change(dialog(), 'motivo', 'Entrada con permiso mínimo F3')
+  await submit(dialog().querySelector('form'), () => !dialog(), 'entrada sin listar productos ni movimientos')
+  assert.equal(requests.slice(start).some((r) => r.method === 'GET' && /\/(productos|movimientos|existencias)\/\?/.test(r.path)), false)
+  await fail(() => movimientos.registrarMovimiento(shop.id, { ...repetible, clave_operacion: crypto.randomUUID(), tipo: 'salida' }), 'permission_denied', 403)
+  await logout()
+  start = requests.length
+  await login('integracion_ajuste_minimo')
+  await go('/negocio/movimientos', () => document.querySelector('button[aria-label="Ajustar inventario"]'))
+  await act(async () => document.querySelector('button[aria-label="Ajustar inventario"]').click())
+  await until(() => dialog()?.querySelector('select[name="producto_id"] option[value="' + producto.id + '"]'), 'opciones para ajuste mínimo')
+  await change(dialog(), 'producto_id', String(producto.id))
+  await until(() => dialog()?.textContent.includes('Versión:'), 'detalle autorizado sin listado')
+  await change(dialog(), 'stock_objetivo', '8.000')
+  await change(dialog(), 'motivo', 'Ajuste mínimo F3')
+  await submit(dialog().querySelector('form'), () => !dialog(), 'ajuste sin listados generales')
+  assert.equal(requests.slice(start).some((r) => r.method === 'GET' && /\/(existencias|movimientos|productos)\/\?/.test(r.path)), false)
+  await logout()
+  start = requests.length
+  await login('integracion_historial_minimo')
+  await go('/negocio/movimientos', () => document.querySelector('table')?.textContent.includes('Ajuste mínimo F3'))
+  const filters = document.querySelector('form[aria-label="Filtros del historial"]')
+  await change(filters, 'search', 'HTTP-ARROZ')
+  await change(filters, 'tipo', 'entrada')
+  await submit(filters, () => requests.slice(start).some((r) => r.path.includes('tipo=entrada')), 'filtros reales de historial')
+  await until(() => document.querySelector('table') && !document.querySelector('table').textContent.includes('Ajuste mínimo F3'), 'historial filtrado')
+  assert.equal(requests.slice(start).some((r) => r.path.includes('/productos/') || r.path.includes('/existencias/')), false)
+  await clickButton('Siguiente')
+  await until(() => requests.slice(start).some((r) => r.path.includes('page=2') && r.path.includes('tipo=entrada')), 'paginación con filtros')
+  await logout()
+
+  // Cuenta compartida: dos negocios con producto homónimo y respuestas tardías.
+  await login('integracion_admin')
+  await change(document, 'negocio-activo', String(hardware.id))
+  const otherCategory = await inAct(() => categorias.crearCategoria(hardware.id, { nombre: 'Alimentos HTTP' }))
+  const otherProduct = await inAct(() => productos.crearProducto(hardware.id, { categoria_id: otherCategory.id,
+    sku: 'HTTP-ARROZ', nombre: 'Arroz de ferretería F3', unidad: 'kg', precio_venta: '1.00' }))
+  const otherStock = await inAct(() => existencias.obtenerExistencia(hardware.id, otherProduct.id))
+  await change(document, 'negocio-activo', String(shop.id))
+  await go('/negocio/movimientos', () => document.querySelector('button[aria-label="Registrar entrada"]'))
+  const heldOptions = holdNext((r) => r.path.includes('/negocios/' + shop.id + '/productos/opciones/'))
+  await act(async () => {
+    document.querySelector('button[aria-label="Registrar entrada"]').click()
+  })
+  await act(async () => { await heldOptions.received })
+  await change(document, 'negocio-activo', String(hardware.id))
+  await until(() => !dialog(), 'cambio de negocio desmonta modal con consulta pendiente')
+  await act(async () => heldOptions.release())
+  await act(async () => document.querySelector('button[aria-label="Registrar entrada"]').click())
+  // Esperar opciones del contexto actual sin aceptar las de tienda.
+  await until(() => dialog()?.querySelector('option[value="' + otherProduct.id + '"]'), 'opciones de ferretería')
+  assert.equal(dialog().querySelector('option[value="' + producto.id + '"]'), null)
+  await closeDialog()
+  await fail(() => existencias.obtenerExistencia(hardware.id, producto.id), 'not_found', 404)
+  await fail(() => movimientos.registrarMovimiento(hardware.id, { ...repetible, clave_operacion: crypto.randomUUID() }), 'validation_error', 400)
+  assert.deepEqual(await inAct(() => existencias.obtenerExistencia(hardware.id, otherProduct.id)), otherStock)
+  assert.equal((await inAct(() => movimientos.listarMovimientos(hardware.id))).count, 0)
+  await go('/negocio/existencias', () => document.querySelector('table')?.textContent.includes('Arroz de ferretería F3'))
+  await act(async () => root.unmount())
+  root = createRoot(document.getElementById('root'))
+  await act(async () => root.render(React.createElement(App)))
+  await until(() => document.querySelector('#negocio-activo'), 'restaurar sesión al recargar fase 2')
+  await change(document, 'negocio-activo', String(hardware.id))
+  await until(() => document.querySelector('table')?.textContent.includes('Arroz de ferretería F3'), 'recarga conserva datos persistidos')
+  await change(document, 'negocio-activo', String(shop.id))
+  await go('/negocio/movimientos', () => document.querySelector('button[aria-label="Registrar entrada"]'))
+  const heldLogout = holdNext((r) => r.path.includes('/negocios/' + shop.id + '/productos/opciones/'))
+  await act(async () => document.querySelector('button[aria-label="Registrar entrada"]').click())
+  await act(async () => { await heldLogout.received })
+  await logout()
+  await act(async () => heldLogout.release())
+  assert.equal(dialog(), null)
+  assert.equal(document.body.style.overflow, '')
+  await fail(() => auth.obtenerSesion(), 'not_authenticated', 403)
+  console.log('OK F3 ampliado: edición, rollback, respuesta perdida/reintento, CSRF real, busy/envío único, permisos mínimos, filtros/páginas, dos negocios, solicitudes tardías, recarga y logout.')
   assert.ok(requests.some((r) => r.path.includes('/roles/asignables/') && r.status === 200))
   assert.ok(requests.every((r) => r.status < 500))
   console.log('OK integración React DOM → Vite → Django → PostgreSQL: login/CSRF, usuarios, dos negocios, roles, ambas altas, último administrador, cambio de rol, permisos mínimos sin listar_roles, aislamiento, recarga y logout.')
 } finally {
+  for (const release of releases) release()
   await act(async () => root.unmount())
   globalThis.fetch = nativeFetch
   await server.close()
