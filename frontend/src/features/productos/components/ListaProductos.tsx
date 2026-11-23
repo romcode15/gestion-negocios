@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { FormEvent } from 'react'
+import { ApiException } from '../../../api/errors'
 import type { Pagina } from '../../../api/types'
 import { useConsultaContexto } from '../../../app/providers/useConsultaContexto'
 import type { ContextoConsulta } from '../../../app/providers/useConsultaContexto'
@@ -14,9 +15,10 @@ type EstadoFiltro = '' | 'true' | 'false'
 
 interface Props {
   onEditar: ((producto: Producto) => void) | null
+  refresco?: number
 }
 
-export function ListaProductos({ onEditar }: Props) {
+export function ListaProductos({ onEditar, refresco = 0 }: Props) {
   const [page, setPage] = useState(1)
   const [busqueda, setBusqueda] = useState('')
   const [categoriaTexto, setCategoriaTexto] = useState('')
@@ -25,11 +27,19 @@ export function ListaProductos({ onEditar }: Props) {
   const [filtros, setFiltros] = useState<FiltrosProductos>({})
 
   const cargar = useCallback(
-    ({ negocioId, signal }: ContextoConsulta): Promise<Pagina<Producto> | null> =>
-      negocioId === null ? Promise.resolve(null) : listarProductos(negocioId, { page, signal, ...filtros }),
+    async ({ negocioId, signal }: ContextoConsulta): Promise<Pagina<Producto> | null> => {
+      if (negocioId === null) return null
+      try {
+        return await listarProductos(negocioId, { page, signal, ...filtros })
+      } catch (error) {
+        // Una edición puede sacar del filtro la última fila de esta página.
+        if (!signal.aborted && error instanceof ApiException && error.status === 404 && page > 1) setPage(1)
+        throw error
+      }
+    },
     [page, filtros],
   )
-  const { data, error, pending, reintentar } = useConsultaContexto(cargar)
+  const { data, error, pending, reintentar } = useConsultaContexto(cargar, refresco)
 
   function aplicar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()

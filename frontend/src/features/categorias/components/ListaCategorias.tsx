@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { FormEvent } from 'react'
+import { ApiException } from '../../../api/errors'
 import type { Pagina } from '../../../api/types'
 import type { ContextoConsulta } from '../../../app/providers/useConsultaContexto'
 import { useConsultaContexto } from '../../../app/providers/useConsultaContexto'
@@ -14,25 +15,32 @@ type EstadoFiltro = '' | 'true' | 'false'
 
 interface Props {
   onEditar: ((categoria: Categoria) => void) | null
+  refresco?: number
 }
 
-export function ListaCategorias({ onEditar }: Props) {
+export function ListaCategorias({ onEditar, refresco = 0 }: Props) {
   const [page, setPage] = useState(1)
   const [busqueda, setBusqueda] = useState('')
   const [estado, setEstado] = useState<EstadoFiltro>('')
   const [filtros, setFiltros] = useState<{ search: string; activo: EstadoFiltro }>({ search: '', activo: '' })
 
   const cargar = useCallback(
-    ({ negocioId, signal }: ContextoConsulta): Promise<Pagina<Categoria> | null> => {
-      if (negocioId === null) return Promise.resolve(null)
+    async ({ negocioId, signal }: ContextoConsulta): Promise<Pagina<Categoria> | null> => {
+      if (negocioId === null) return null
       const f: FiltrosCategorias = {}
       if (filtros.search) f.search = filtros.search
       if (filtros.activo) f.activo = filtros.activo === 'true'
-      return listarCategorias(negocioId, { page, signal, ...f })
+      try {
+        return await listarCategorias(negocioId, { page, signal, ...f })
+      } catch (error) {
+        // Una edición puede sacar del filtro la última fila de esta página.
+        if (!signal.aborted && error instanceof ApiException && error.status === 404 && page > 1) setPage(1)
+        throw error
+      }
     },
     [page, filtros],
   )
-  const { data, error, pending, reintentar } = useConsultaContexto(cargar)
+  const { data, error, pending, reintentar } = useConsultaContexto(cargar, refresco)
 
   function aplicar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()

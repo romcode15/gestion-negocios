@@ -54,7 +54,7 @@ function CategoriasNegocio() {
       {mensaje && <p role="status">{mensaje}</p>}
 
       {puedeListar
-        ? <ListaCategorias key={refresco}
+        ? <ListaCategorias refresco={refresco}
             onEditar={puedeEditar ? (c) => { setMensaje(null); setModal({ modo: 'editar', id: c.id }) } : null} />
         : puedeEditar && (
           <form onSubmit={abrirPorId}>

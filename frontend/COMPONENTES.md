@@ -128,7 +128,7 @@ Desde frontend: `npm.cmd run test:modales`, `npm.cmd test`, `npm.cmd run lint`, 
 
 `verificar-modales.mjs` usa DOM en jsdom y comprueba portal/ARIA, foco inicial, Tab/Shift+Tab, Escape, fondo/clic interno, botón, busy, restauración de overflow/inert, limpieza de listeners, StrictMode, un solo formulario, cancelar/submit, validación visible, bloqueo síncrono del consumidor y desmontaje forzoso. Comprueba cada permiso alternativo, acceso denegado y datos/contexto de otro negocio, con descarte de respuestas viejas. No ejecuta escrituras ni prueba reglas de inventario ajenas al componente.
 
-El caso de tamaño pequeño monta el formulario con viewport de prueba 320×568 y comprueba su DOM; **jsdom no mide el layout ni sustituye una revisión visual**. Revisión visual en navegador a 320×568 y escritorio: pendiente. Revisar cuerpo desplazable, acciones visibles, foco/teclado, errores largos y zoom antes de aprobar el PR. No se declara integración con Django/PostgreSQL.
+El caso de tamaño pequeño monta el formulario con viewport de prueba 320×568 y comprueba su DOM; **jsdom no mide el layout ni sustituye una revisión visual**. En la entrega #49 la revisión visual quedó pendiente y todavía no se declaraba integración con Django/PostgreSQL. Los resultados posteriores de integración y el cierre visual se registran al final de este documento.
 
 Mantener todos los formularios de fase 1 en su ubicación actual. A petición del equipo, esta rama también incorpora los cambios visuales locales: login centrado, tema claro/oscuro, iconos, marco compartido y notificaciones. Se combinaron con la corrección #38 conservando el catálogo de roles asignables y las pruebas de permisos mínimos.
 
@@ -179,7 +179,27 @@ Comprobación automatizada del 23/11/2026: `npm.cmd run lint`,
 `tools/verificar_postgres.py --integracion-frontend`, correctos.
 Preparación y casos reproducibles: [API.md](API.md#f3--integración-http-real-57).
 
-Revisión visual en navegador (teclado/foco, etiquetas, fondo/scroll, errores,
-pending y móvil): pendiente de completar. Las pruebas DOM anteriores no
-acreditan el layout. Para revisar con los datos temporales, usar la opción
-`--revision-visual` descrita en el [README](README.md).
+Revisión visual en navegador: **completada por Romel**, según su confirmación
+del 23/11/2026 y el cierre del [issue #78](https://github.com/romcode15/gestion-negocios/issues/78).
+Esta confirmación cierra el pendiente de teclado/foco, etiquetas, fondo/scroll,
+errores, pending y móvil de #57. El registro corresponde a la revisión manual
+del responsable; las pruebas DOM no acreditan el layout. Para repetirla con
+datos temporales, usar `--revision-visual`, descrito en el [README](README.md).
+
+## Conservación de filtros del catálogo (#78)
+
+Guardar una categoría o producto actualiza su listado sin desmontarlo. Se
+conservan búsqueda, estado, categoría y página válida; un registro que no cumple
+el filtro no se fuerza dentro de la tabla. Si una edición deja fuera de rango
+la página actual, se vuelve a la primera página con los mismos filtros.
+Cambiar de negocio continúa desmontando el módulo y limpiando su estado.
+
+`useConsultaContexto(cargar, refresco?)` admite un contador opcional para volver
+a consultar sin reiniciar el estado del componente. Una respuesta anterior al
+refresco no se presenta como actual; se mantienen cancelación y aislamiento.
+Los consumidores existentes pueden seguir pasando únicamente `cargar`.
+
+`npm.cmd run test:filtros-catalogo` verifica ambos módulos mediante formularios
+React: edición en la segunda página, desactivación de su última fila, alta fuera
+del filtro y limpieza al cambiar a otro negocio autorizado. Se incluye en
+`npm.cmd test`.
