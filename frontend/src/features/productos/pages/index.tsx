@@ -49,7 +49,7 @@ function ProductosNegocio() {
       {mensaje && <p role="status">{mensaje}</p>}
 
       {puedeListar
-        ? <ListaProductos key={refresco}
+        ? <ListaProductos refresco={refresco}
             onEditar={puedeEditar ? (p) => { setMensaje(null); setModal({ modo: 'editar', id: p.id }) } : null} />
         : puedeEditar && (
           <form onSubmit={abrirPorId}>

@@ -67,6 +67,12 @@ npm.cmd test
 
 Las pruebas incluyen funciones de API, sesión, rutas, formularios, paginación, cancelación, errores y restricciones del simulador. Las pruebas HTTP de esta suite sustituyen fetch y no reemplazan la integración con Django.
 
+`npm.cmd run test:filtros-catalogo` comprueba que crear/editar categorías y
+productos conserva filtros y página válida, recupera páginas que quedan fuera
+de rango y limpia el estado al cambiar de negocio. También forma parte de la
+suite completa. El cierre visual confirmado por Romel se registra en
+[COMPONENTES.md](COMPONENTES.md#verificación-de-integración-f3-57).
+
 Para ejecutar las pantallas de React mediante DOM con HTTP real y PostgreSQL temporal, desde backend:
 
 ```powershell

@@ -137,7 +137,7 @@ try {
   await click(document.querySelector('.modal-backdrop')); await key('Escape')
   assert.equal(closed, beforeCancel + 1)
   await render(null)
-  console.log('OK FormModal: un formulario, submit/cancelar explícitos, validación visible, busy, envío síncrono y DOM completo con viewport móvil. Diseño visual pendiente.')
+  console.log('OK FormModal: un formulario, submit/cancelar explícitos, validación visible, busy, envío síncrono y DOM completo con viewport móvil. Layout validado por separado mediante revisión visual documentada.')
 
   const expected = {
     categorias: ['listar_categorias', 'crear_categoria', 'editar_categoria'],
