@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'accesos.apps.AccesosConfig',
     'catalogo',
     'inventario',
+    'ventas.apps.VentasConfig',
 ]
 
 MIDDLEWARE = [

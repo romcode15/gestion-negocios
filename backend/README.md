@@ -21,6 +21,14 @@ Si todavía no existe .venv o .env, prepararlos primero según el README princip
 
 Al actualizar una base de fase 1, `migrate` aplica la migración nueva de permisos de fase 2. Agrega once permisos de negocio y los asigna a los administradores de negocio predefinidos existentes; conserva roles personalizados y los permisos de plataforma. Los negocios nuevos reciben el mismo catálogo mediante la preparación idempotente existente. No editar migraciones aplicadas ni otorgar permisos manualmente a todos los roles.
 
+La base de fase 3 agrega `ventas.0001_initial` y
+`accesos.0003_permisos_fase3`. El mismo `migrate` crea las tablas de venta,
+detalle, anulación y vínculos y prepara `registrar_venta`, `listar_ventas` y
+`anular_venta`: 19 permisos de negocio en los administradores predefinidos,
+existentes y nuevos. Conserva roles personalizados y permisos de plataforma.
+El catálogo mock de frontend se ampliará en F2 (#90); no asumir IDs fijos.
+Estos permisos y modelos base todavía no publican endpoints de ventas.
+
 ## Preparar la cuenta inicial
 
 ```powershell
@@ -96,6 +104,7 @@ La API de existencias de fase 2 ya está disponible: lista con `consultar_existe
 
 - [Fase 1](Fase1.md): contrato y criterios de cierre.
 - [Fase 2](fase2.md): guía de catálogo/inventario y reparto de backend; leer también el [contrato común](../fase2.md).
+- [Fase 3](fase3.md): base de ventas, primitivas internas, serializers, fixtures y límites de B1; [contrato común](../fase3.md).
 - [Estructura](ESTRUCTURA.md): carpetas y responsabilidades.
 - [Modelos](MODELOS.md): integridad y preparación inicial.
 - [API y seguridad](API.md): sesiones, permisos, transacciones e imports compartidos.

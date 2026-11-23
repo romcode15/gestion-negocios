@@ -9,6 +9,7 @@ PERMISOS_NEGOCIO = (
     "listar_productos", "crear_producto", "editar_producto",
     "consultar_existencias", "registrar_entrada", "registrar_salida",
     "ajustar_inventario", "listar_movimientos",
+    "registrar_venta", "listar_ventas", "anular_venta",
 )
 SUPERADMINISTRADOR = "Superadministrador"
 ADMINISTRADOR_NEGOCIO = "Administrador de negocio"

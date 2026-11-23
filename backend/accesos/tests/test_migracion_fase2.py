@@ -1,15 +1,18 @@
+from importlib import import_module
+
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase
 
-from accesos.catalogo import PERMISOS_NEGOCIO, PERMISOS_PLATAFORMA
+from accesos.catalogo import PERMISOS_PLATAFORMA
 from accesos.models import Permiso, RolPermiso
 
 
 PERMISOS_FASE1_NEGOCIO = {
     "listar_roles", "crear_rol", "listar_membresias", "crear_membresia", "asignar_rol",
 }
-PERMISOS_NUEVOS = set(PERMISOS_NEGOCIO) - PERMISOS_FASE1_NEGOCIO
+PERMISOS_NUEVOS = set(import_module("accesos.migrations.0002_permisos_fase2").PERMISOS_FASE2)
+PERMISOS_NEGOCIO_FASE2 = PERMISOS_FASE1_NEGOCIO | PERMISOS_NUEVOS
 FASE1 = ("accesos", "0001_initial")
 FASE2 = ("accesos", "0002_permisos_fase2")
 
@@ -63,7 +66,7 @@ class MigracionPermisosFase2Tests(TestCase):
                 permisos_anteriores,
             )
             esperados = {
-                **{rol.pk: set(PERMISOS_NEGOCIO) for rol in administradores},
+                **{rol.pk: PERMISOS_NEGOCIO_FASE2 for rol in administradores},
                 limitado.pk: {"listar_roles"},
                 homonimo.pk: {"listar_roles"},
                 plataforma.pk: set(PERMISOS_PLATAFORMA),

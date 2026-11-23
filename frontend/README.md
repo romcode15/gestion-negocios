@@ -110,6 +110,7 @@ algún permiso de escritura de inventario, sin exigir los listados generales.
 
 - [Fase 1](fase1.md): contrato y criterios.
 - [Fase 2](fase2.md): módulos, componentes y modales; leer también el [contrato común](../fase2.md).
+- [Fase 3](fase3.md): trabajo pendiente de ventas, carrito, anulación y cierre HTTP; [contrato común](../fase3.md).
 - [Estructura](ESTRUCTURA.md): módulos y responsabilidades.
 - [API](API.md): firmas, simulación y transporte HTTP.
 - [Componentes](COMPONENTES.md): interfaces compartidas.
