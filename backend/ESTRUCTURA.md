@@ -2,6 +2,12 @@
 
 Esta estructura organiza los módulos implementados en la fase 1. El núcleo de modelos y preparación inicial de #4 se documenta en [MODELOS.md](MODELOS.md). La capa HTTP está en `api/`.
 
+Las ampliaciones posteriores se detallan en [fase 2](fase2.md) y
+[fase 3](fase3.md). La app de dominio `ventas` se registra en settings; sus
+modelos/migraciones pertenecen a Romel. `api/ventas` contiene la composición y
+salidas comunes, con submódulos propios de cada responsable. La base de fase 3
+mantiene esas rutas vacías hasta que se implementen sus endpoints.
+
 La autenticación, las bases compartidas y las rutas de plataforma, roles y membresías se describen en [API.md](API.md). Cada módulo conserva su composición de URLs y sus pruebas. Roles incluye el catálogo de roles asignables utilizado por membresías.
 
 Consultar [Fase1.md](Fase1.md), [README del proyecto](../README.md) y el [contrato frontend](../frontend/fase1.md). Las carpetas Python incluyen `__init__.py`; las migraciones nuevas se crean durante el desarrollo, sin editar la migración existente de Usuario.

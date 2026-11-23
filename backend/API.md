@@ -1,5 +1,22 @@
 # Base de API y seguridad · Issue #5
 
+## Base de ventas · Issue #80
+
+B1 prepara modelos, permisos, [serializers de salida](api/ventas/serializers.py),
+fixtures y composición vacía de URLs. Los endpoints de ventas siguen por
+implementar en B4–B8; no se publican rutas ni respuestas ficticias en Swagger.
+El [contrato común de fase 3](../fase3.md) fija sus siete operaciones y permisos.
+
+La [guía backend](fase3.md) documenta primitivas, huellas, importaciones, fixtures,
+orden de bloqueos y propiedad por módulo. El servicio público de movimientos de
+fase 2 conserva sus permisos, firma, reintentos y errores; reutiliza las nuevas
+primitivas internas sin conceder acceso manual a quien solo puede vender/anular.
+
+GET y POST de `ventas/` compartirán una vista de colección: B5 compone el mixin
+preparado para B6. No registrar dos vistas con la misma ruta esperando que Django
+resuelva por método. Cada módulo documentará exclusivamente su implementación y
+actualizará el comparador de rutas coordinando con Romel.
+
 ## Integración y cierre backend · Issue #48
 
 Las APIs de categorías, productos, existencias, movimientos y ajustes están integradas. El [contrato común de fase 2](../fase2.md) sigue siendo la referencia de campos, filtros, permisos y reglas. Las verificaciones del cierre se encuentran en:

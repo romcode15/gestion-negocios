@@ -84,7 +84,7 @@ rol = preparar_administrador_negocio(negocio)
 # Crear luego Membresia para la cuenta administradora validada.
 ```
 
-El helper crea el rol predefinido con los 16 permisos de negocio vigentes, incluidos los 11 de [catálogo e inventario](fase2.md). La migración `accesos.0002_permisos_fase2` incorpora esos 11 permisos a los administradores predefinidos existentes. Los helpers usan `transaction.atomic()` y la transacción de alta de negocio abarca también la creación de su membresía.
+El helper crea el rol predefinido con los 19 permisos de negocio vigentes: cinco de fase 1, once de [catálogo e inventario](fase2.md) y tres de [ventas](fase3.md). Las migraciones `accesos.0002_permisos_fase2` y `accesos.0003_permisos_fase3` incorporan sus permisos a los administradores predefinidos existentes; conservan roles personalizados y plataforma. Los helpers usan `transaction.atomic()` y la transacción de alta de negocio abarca también la creación de su membresía.
 
 ## Datos y ejecución de pruebas
 

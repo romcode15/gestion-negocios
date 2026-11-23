@@ -2,7 +2,7 @@
 
 Sistema web multi-tenant desarrollado para la materia de Aplicaciones Web. Permite gestionar distintos negocios desde una misma plataforma, como tiendas, ferreterías, farmacias y restaurantes.
 
-La primera fase funcional cubre usuarios, negocios, roles, permisos y membresías. Sobre esta base se incorporarán catálogo, inventario y ventas.
+Las fases 1 y 2 cubren usuarios, negocios, roles, permisos, catálogo e inventario. La fase 3 prepara ventas y su integración con las existencias.
 
 ## Funcionamiento del sistema
 
@@ -103,7 +103,8 @@ Seguir la [guía de GitHub del equipo](guiagithub.md) para nombres de ramas, com
 
 - **Fase 0 · Preparación del proyecto.** Romel configura el repositorio, Django con PostgreSQL y React con TypeScript, y documenta cómo ejecutar el proyecto desde un clon limpio.
 - **Fase 1 · Usuarios, negocios, roles y membresías.** Tres integrantes trabajan en backend y tres en frontend. El flujo se completa cuando el superadministrador crea un negocio y asigna a su administrador, y este crea un rol con permisos y lo asigna a un usuario mediante su membresía.
-- **Fase 2 · Catálogo e inventario básico.** Categorías, productos, existencias, entradas, salidas, ajustes e historial por negocio. El [contrato común](fase2.md) define campos, rutas, permisos y dependencias. Consultar las guías de [backend](backend/fase2.md) y [frontend](frontend/fase2.md) antes de implementar sus issues. Es una entrega planificada; su publicación no significa que ya esté implementada.
+- **Fase 2 · Catálogo e inventario básico.** Integrada en `dev`: categorías, productos, existencias, entradas, salidas, ajustes e historial por negocio. El [contrato común](fase2.md) conserva campos, rutas, permisos y dependencias. Guías de [backend](backend/fase2.md) y [frontend](frontend/fase2.md).
+- **Fase 3 · Ventas e integración con inventario.** El [contrato común](fase3.md) define confirmación multilínea, anulación total, snapshots de precios, permisos y trazabilidad. La base B1 prepara modelos, migraciones y componentes internos; los endpoints y pantallas siguen por implementar en sus issues. Guías de [backend](backend/fase3.md) y [frontend](frontend/fase3.md).
 
 ### Desarrollo en paralelo e integración
 

@@ -7,4 +7,5 @@ urlpatterns = [
     path("negocios/<int:negocio_id>/", include("api.membresias.urls")),
     path("negocios/<int:negocio_id>/", include("api.catalogo.urls")),
     path("negocios/<int:negocio_id>/", include("api.inventario.urls")),
+    path("negocios/<int:negocio_id>/", include("api.ventas.urls")),
 ]

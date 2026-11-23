@@ -6,14 +6,17 @@ from uuid import UUID
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError as DjangoValidationError
-from django.core.validators import DecimalValidator
 from django.db import IntegrityError, transaction
 from psycopg.errors import UniqueViolation
 from rest_framework.exceptions import ValidationError
 
 from api.common.access import resolver_contexto_negocio
 from catalogo.models import Producto, tiene_fraccion
-from inventario.models import Existencia, MovimientoInventario
+from inventario.models import MovimientoInventario
+from inventario.operaciones import (
+    MAX_ENTERO_API, aplicar_delta_bloqueado, bloquear_existencias,
+    validar_rango_cantidad as _validar_rango_decimal,
+)
 
 from .exceptions import ConflictoInventario
 
@@ -26,17 +29,9 @@ _PERMISOS = {
 }
 _PATRON_DECIMAL = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
 _ESCALA = Decimal("0.001")
-_VALIDAR_DECIMAL = DecimalValidator(max_digits=14, decimal_places=3)
-_MAX_ENTERO_API = 2**53 - 1
+_MAX_ENTERO_API = MAX_ENTERO_API
 _PRODUCTO_INVALIDO = "Selecciona un producto activo del negocio."
 _RESTRICCION_CLAVE = "movimiento_clave_unica_por_negocio"
-
-
-def _validar_rango_decimal(valor, campo):
-    try:
-        _VALIDAR_DECIMAL(valor)
-    except DjangoValidationError as error:
-        raise ValidationError({campo: error.messages}) from error
 
 
 def _normalizar_decimal(valor, campo):
@@ -148,7 +143,7 @@ def registrar_movimiento(
         datos_normalizados["version_esperada"] = version_esperada
     huella = sha256(json.dumps(datos_normalizados, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
-    existencia = Existencia.objects.select_for_update().filter(negocio_id=negocio_id, producto_id=producto_id).first()
+    existencia = bloquear_existencias(negocio_id, [producto_id]).get(producto_id)
     # Un cambio de permisos o de estado puede ocurrir mientras esperamos el bloqueo.
     contexto = _revalidar_contexto(contexto, permiso)
     anterior = _movimiento_confirmado(negocio_id, clave, usuario_id, huella)
@@ -173,23 +168,11 @@ def registrar_movimiento(
     else:
         delta = -valor if tipo == Tipo.SALIDA else valor
 
-    saldo = saldo_anterior + delta
-    if saldo < 0:
-        raise ValidationError({campo: "Saldo insuficiente."})
-    _validar_rango_decimal(saldo, campo)
-    if existencia.version >= _MAX_ENTERO_API:
-        raise ValidationError({"version_esperada": "Versión fuera de rango."})
-
     try:
-        with transaction.atomic():
-            existencia.cantidad = saldo
-            existencia.version += 1
-            existencia.save(update_fields=["cantidad", "version"])
-            return MovimientoInventario.objects.create(
-                negocio=contexto.negocio, producto=producto, usuario=contexto.membresia.usuario, tipo=tipo,
-                cantidad=delta, saldo_anterior=saldo_anterior, saldo_posterior=saldo, motivo=motivo,
-                clave_operacion=clave, huella_solicitud=huella,
-            )
+        return aplicar_delta_bloqueado(
+            contexto, existencia, tipo=tipo, delta=delta, motivo=motivo,
+            clave_operacion=clave, huella_solicitud=huella, campo=campo,
+        )
     except (IntegrityError, DjangoValidationError) as error:
         if _es_colision_de_clave(error):
             repetido = _movimiento_confirmado(negocio_id, clave, usuario_id, huella)
