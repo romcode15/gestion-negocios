@@ -153,3 +153,33 @@ Los selectores de cuentas y roles reúnen automáticamente las páginas autoriza
 `ToastProvider` se monta una vez en `App`. Desde cualquier componente dentro del proveedor, importar `useToast` de `components/feedback/ToastContext` y llamar `notify({ type: 'success' | 'info' | 'warning' | 'error', title: 'Título', message: 'Detalle opcional' })`. El toast aparece arriba, admite cierre manual y desaparece tras 7 segundos; pausa el cierre al pasar el cursor o enfocar. `duration: 0` mantiene la notificación hasta cerrarla. Hay un máximo de cuatro avisos visibles y estilos para ambos temas.
 
 La expiración de una sesión activa muestra un único toast de advertencia. Abrir la aplicación sin sesión es un estado normal y no genera esa notificación. Los errores de validación de campos continúan junto a sus controles.
+
+## Verificación de integración F3 (#57)
+
+El registro anterior de #49 corresponde a aquella entrega. En F3 se ejecutan
+los componentes de los módulos ya integrados contra Django/PostgreSQL real,
+sin trasladar lógica de dominio a Modal/FormModal ni migrar formularios de fase 1.
+
+`verificar-integracion.mjs` conserva las regresiones de fase 1 y abre los modales
+de categorías, productos, entradas, salidas y ajustes. Comprueba validación
+visible con entradas conservadas, cierre tras éxito, busy, dos submit síncronos,
+Escape bloqueado durante la espera y limpieza al desmontar por negocio/sesión.
+El escenario tardío entrega una respuesta real del contexto anterior después
+del cambio; no deben reaparecer sus opciones ni abrirse su modal.
+
+El formulario sigue siendo responsable del bloqueo síncrono mediante ref,
+además del estado `pending`. Las operaciones de inventario conservan su UUID
+en un reintento manual idéntico; el modal no genera claves ni reenvía peticiones.
+Las pruebas de persistencia verifican que un doble submit y una respuesta perdida
+no produzcan movimientos duplicados. Abortar una solicitud no revierte una
+escritura que Django ya confirmó.
+
+Comprobación automatizada del 23/11/2026: `npm.cmd run lint`,
+`npm.cmd run build`, `npm.cmd test` y el flujo HTTP real desde
+`tools/verificar_postgres.py --integracion-frontend`, correctos.
+Preparación y casos reproducibles: [API.md](API.md#f3--integración-http-real-57).
+
+Revisión visual en navegador (teclado/foco, etiquetas, fondo/scroll, errores,
+pending y móvil): pendiente de completar. Las pruebas DOM anteriores no
+acreditan el layout. Para revisar con los datos temporales, usar la opción
+`--revision-visual` descrita en el [README](README.md).

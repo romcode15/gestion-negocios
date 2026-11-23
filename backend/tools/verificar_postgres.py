@@ -14,7 +14,7 @@ from urllib.error import URLError
 from urllib.request import urlopen
 
 
-def verificar_frontend(backend, env):
+def verificar_frontend(backend, env, revision_visual=False):
     """Ejecuta los formularios React contra Django y el PostgreSQL temporal."""
     frontend = backend.parent / "frontend"
     if not (frontend / "node_modules" / "jsdom").is_dir():
@@ -23,7 +23,9 @@ def verificar_frontend(backend, env):
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]
     env = dict(env, VITE_API_MODE="http", INTEGRACION_API_URL=f"http://127.0.0.1:{port}",
-               INTEGRACION_PASSWORD="Pruebas-" + secrets.token_urlsafe(24) + "!")
+               INTEGRACION_PASSWORD=os.environ.get("INTEGRACION_PASSWORD") or "Pruebas-" + secrets.token_urlsafe(24) + "!")
+    if revision_visual and not os.environ.get("INTEGRACION_PASSWORD"):
+        raise RuntimeError("Para revisión visual define INTEGRACION_PASSWORD en tu terminal, sin publicarla.")
     bootstrap = (
         "import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings'); django.setup(); "
         "from django.contrib.auth import get_user_model; from accesos.services import asignar_superadministrador; "
@@ -46,6 +48,67 @@ def verificar_frontend(backend, env):
                     raise RuntimeError("Django temporal no respondió para la integración.")
                 time.sleep(0.1)
         subprocess.run(["node", "verificar-integracion.mjs"], cwd=frontend, env=env, check=True)
+        # Otra conexión/proceso verifica lo persistido, además de las respuestas
+        # de la API. No prepara saldos ni modifica el resultado de los formularios.
+        persistencia = """
+import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+import django
+django.setup()
+from decimal import Decimal
+from catalogo.models import Categoria, Producto
+from inventario.models import Existencia, MovimientoInventario
+assert Categoria.objects.filter(descripcion='Edición persistida F3').exists()
+principal = Producto.objects.get(sku='HTTP-ARROZ', nombre='Arroz HTTP')
+assert principal.precio_venta == Decimal('13.20')
+assert Existencia.objects.get(producto=principal).cantidad == Decimal('8.000')
+assert Producto.objects.filter(sku='SOLO-CREAR', nombre='Producto mínimo F3').exists()
+for saldo in Existencia.objects.select_related('producto'):
+    movimientos = list(MovimientoInventario.objects.filter(
+        negocio_id=saldo.negocio_id, producto_id=saldo.producto_id).order_by('creado_en', 'id'))
+    anterior = Decimal('0.000')
+    for movimiento in movimientos:
+        assert movimiento.saldo_anterior == anterior
+        assert movimiento.saldo_posterior == anterior + movimiento.cantidad
+        anterior = movimiento.saldo_posterior
+    assert saldo.cantidad == anterior and saldo.version == len(movimientos)
+assert MovimientoInventario.objects.filter(motivo='Respuesta perdida F3').count() == 1
+assert MovimientoInventario.objects.filter(motivo='Envío único F3').count() == 1
+assert not MovimientoInventario.objects.filter(motivo='Salida insuficiente HTTP').exists()
+print('OK PostgreSQL: persistencia de formularios, conciliación completa, versiones y ausencia de duplicados/cambios parciales.')
+"""
+        subprocess.run([sys.executable, "-c", persistencia], cwd=backend, env=env, check=True)
+        if revision_visual:
+            with socket.socket() as probe:
+                probe.bind(("127.0.0.1", 0))
+                vite_port = probe.getsockname()[1]
+            vite_script = """
+import { createServer } from 'vite';
+const server = await createServer({ envDir: false, server: {
+  host: '127.0.0.1', port: Number(process.env.INTEGRACION_VISUAL_PORT), strictPort: true,
+  proxy: { '/api': { target: process.env.INTEGRACION_API_URL, changeOrigin: false } }
+}});
+await server.listen();
+"""
+            visual_env = dict(env, INTEGRACION_VISUAL_PORT=str(vite_port))
+            vite = subprocess.Popen(["node", "--input-type=module", "-e", vite_script],
+                                    cwd=frontend, env=visual_env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                deadline = time.monotonic() + 20
+                while True:
+                    try:
+                        with urlopen(f"http://127.0.0.1:{vite_port}", timeout=1):
+                            break
+                    except (URLError, TimeoutError):
+                        if vite.poll() is not None or time.monotonic() >= deadline:
+                            raise RuntimeError("Vite temporal no respondió para la revisión visual.")
+                        time.sleep(0.1)
+                print(f"Revisión visual HTTP: http://127.0.0.1:{vite_port}", flush=True)
+                print("Cuenta temporal: integracion_admin. Usa la contraseña de tu variable INTEGRACION_PASSWORD.", flush=True)
+                input("Pulsa Enter al terminar para detener Vite/Django y eliminar la base temporal. ")
+            finally:
+                vite.terminate()
+                vite.wait(timeout=15)
     finally:
         process.terminate()
         process.wait(timeout=15)
@@ -56,9 +119,13 @@ def main():
     parser.add_argument("--pg-bin", type=Path, help="Directorio de initdb, pg_ctl y psql.")
     parser.add_argument("--integracion-frontend", action="store_true",
                         help="Después de los tests, probar los formularios React con HTTP real.")
+    parser.add_argument("--revision-visual", action="store_true",
+                        help="Con --integracion-frontend, mantener Vite/Django temporal para revisión en navegador.")
     parser.add_argument("test_labels", nargs="*",
                         help="Etiquetas Django opcionales; sin etiquetas se ejecuta toda la suite.")
     options = parser.parse_args()
+    if options.revision_visual and not options.integracion_frontend:
+        parser.error("--revision-visual requiere --integracion-frontend.")
     suffix = ".exe" if os.name == "nt" else ""
     executable = shutil.which("initdb")
     pg_bin = options.pg_bin or (Path(executable).parent if executable else Path("C:/Program Files/PostgreSQL/18/bin"))
@@ -110,7 +177,7 @@ def main():
             django("makemigrations", "--check", "--dry-run")
             django("test", *options.test_labels, "--noinput", "--verbosity", "2")
             if options.integracion_frontend:
-                verificar_frontend(backend, env)
+                verificar_frontend(backend, env, options.revision_visual)
         finally:
             # Si start falla después de arrancar, detener también ese proceso.
             if started or (data / "postmaster.pid").exists():

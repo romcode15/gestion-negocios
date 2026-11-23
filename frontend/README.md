@@ -77,6 +77,29 @@ Se necesitan las dependencias de ambos proyectos y PostgreSQL disponible. El com
 
 Para una revisión visual manual, usar modo HTTP: crear una cuenta administradora y dos negocios desde plataforma; iniciar sesión como administrador; crear un rol, incorporar una cuenta existente y otra nueva; comprobar errores de permisos, último administrador, recarga, cambio de negocio y cierre de sesión.
 
+### Integración de fase 2 (#57)
+
+El mismo comando también ejecuta los modales de categorías/productos y el flujo
+saldo cero → entrada → salida → ajuste → historial, con datos persistidos.
+Comprueba permisos mínimos, CSRF real, conflicto de versión, respuesta perdida
+con reintento sin duplicado, inactivos, recarga y cambio de negocio/sesión con
+consultas pendientes. Otra conexión consulta PostgreSQL para conciliar saldos,
+versiones e historial. No usa la base de `.env` ni convierte los datos demo en
+cuentas reales. Preparación, casos y resultados: [API.md](API.md#f3--integración-http-real-57).
+
+Para revisar en navegador los mismos datos temporales, definir en la terminal
+`INTEGRACION_PASSWORD` con un valor privado exclusivo de prueba y añadir
+`--revision-visual` al comando. Se muestran URL y cuenta temporal; no se imprime
+la contraseña. Pulsar Enter al terminar detiene los servidores y elimina la base.
+La revisión visual es independiente de las pruebas DOM; su registro está en
+[COMPONENTES.md](COMPONENTES.md).
+
+En modo HTTP las pantallas de fase 2 usan las mismas funciones tipadas del mock.
+Aplicar todas las migraciones para disponer de los once permisos nuevos en los
+administradores predefinidos; los roles personalizados conservan sus permisos.
+Las opciones de categorías requieren crear/editar producto y las de productos
+algún permiso de escritura de inventario, sin exigir los listados generales.
+
 ## Documentación y trabajo en equipo
 
 - [Fase 1](fase1.md): contrato y criterios.
