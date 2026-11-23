@@ -1,6 +1,6 @@
 # Fase 3 · Ventas e integración con inventario
 
-Fuente acordada: [issue #80](https://github.com/romcode15/gestion-negocios/issues/80). B1 prepara modelos, permisos, serializers de salida, fixtures y composición vacía. **Las siete operaciones HTTP de ventas de esta guía siguen por implementar en B4–B8**; no se publican aún ni aparecen como endpoints disponibles en Swagger. Confirmación y anulación funcionales pertenecen a B2/B7.
+Fuente acordada: [issue #80](https://github.com/romcode15/gestion-negocios/issues/80). B1 prepara modelos, permisos, serializers de salida, fixtures y composición vacía. B2 implementa el servicio interno de confirmación; la anulación corresponde a B7. **Las siete operaciones HTTP de ventas de esta guía siguen por implementar en B4–B8**; no se publican aún ni aparecen como endpoints disponibles en Swagger.
 
 Este contrato común permite comenzar frontend sin esperar la implementación backend. Leer también las guías de [backend](backend/fase3.md) y [frontend](frontend/fase3.md) y el issue asignado. Una modificación posterior se coordina con Romel y Henry y actualiza contrato, tipos, simulación, OpenAPI y pruebas.
 
