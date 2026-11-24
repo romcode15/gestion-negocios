@@ -29,6 +29,17 @@ existentes y nuevos. Conserva roles personalizados y permisos de plataforma.
 El catálogo mock de frontend se ampliará en F2 (#90); no asumir IDs fijos.
 Estos permisos y modelos base todavía no publican endpoints de ventas.
 
+El servicio de confirmación B2 (#81) ya está implementado para su consumo por
+los módulos HTTP. La [guía backend](fase3.md) documenta su firma, validación,
+idempotencia y helpers para B7. Para verificar únicamente el servicio en
+PostgreSQL temporal:
+
+```powershell
+.\.venv\Scripts\python.exe tools/verificar_postgres.py ventas.tests.test_confirmacion
+```
+
+La publicación de POST ventas/ corresponde a B5.
+
 ## Preparar la cuenta inicial
 
 ```powershell

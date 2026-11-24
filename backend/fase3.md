@@ -4,14 +4,15 @@ Leer el [contrato común](../fase3.md), el issue y [guiagithub.md](../guiagithub
 El contrato fija campos, rutas, permisos, filtros, escalas, errores, redondeo y
 operaciones de inventario. Esta guía fija dónde implementar y qué reutilizar.
 
-## 1. Estado y alcance de B1 (#80)
+## 1. Estado y alcance de B1/B2 (#80/#81)
 
 La app `ventas` está registrada y cuenta con modelos/migración, permisos,
-serializers de salida, fixtures y composición de URLs vacía. **No hay todavía
-endpoints de ventas ni servicios de confirmación/anulación de producción.**
+serializers de salida, fixtures y composición de URLs vacía. B2 implementa
+`ventas.services.confirmacion.confirmar_venta`. **No hay todavía endpoints de
+ventas ni servicio de anulación de producción.**
 Swagger conserva exclusivamente las rutas implementadas de fases 1 y 2.
 
-B2/B4–B9 implementan los módulos pendientes. No construir ventas llamando por
+B4–B9 implementan los módulos pendientes. No construir ventas llamando por
 HTTP a movimientos manuales, ni conceder `registrar_salida` o `registrar_entrada`
 a quien únicamente puede registrar o anular ventas.
 
@@ -25,7 +26,7 @@ backend/
 │   ├── migrations/                    # Romel; no crear migraciones paralelas
 │   ├── services/
 │   │   ├── common.py                  # Huellas canónicas de registro/anulación
-│   │   ├── confirmacion.py            # B2, Romel: por implementar
+│   │   ├── confirmacion.py            # B2, Romel: implementado
 │   │   └── anulacion.py               # B7, Diego: por implementar
 │   └── tests/                         # Modelos y pruebas de dominio
 ├── inventario/operaciones.py            # Primitivas internas compartidas, Romel
@@ -123,7 +124,96 @@ recortan observaciones/motivo. Validar precisión ANTES de calcular la huella:
 el formateo no sustituye la validación. Los UUID de movimientos son independientes
 de la clave de venta, uno por detalle/operación.
 
-## 5. URLs y serializers compartidos
+## 5. Servicio de confirmación — B2 (#81)
+
+```python
+from ventas.services.confirmacion import confirmar_venta
+
+venta = confirmar_venta(
+    contexto,
+    clave_operacion=clave_uuid,
+    observaciones="Nota opcional",
+    detalles=[{
+        "producto_id": producto_id,
+        "cantidad": "1.250",
+        "precio_unitario_esperado": "2.50",
+    }],
+)
+```
+
+Devuelve un modelo `Venta`; B5 responde con `VentaDetalleSerializer` y 201 tanto
+al crear como al repetir. El servicio abre su transacción y exige únicamente
+`registrar_venta`, releyendo usuario/membresía/rol/negocio persistidos. No requiere
+permisos manuales de stock ni listado. No importar fixtures para confirmar una
+venta real.
+
+Validación del servicio:
+
+- Detalles es una lista de 1–100 objetos, con campos exactos, sin productos
+  repetidos. ID entero JSON positivo seguro; cantidad/precio son strings o
+  Decimal ya validados por el serializer. Float, int y bool se rechazan en esos
+  campos. El serializer de B5 debe verificar el tipo JSON original ANTES de
+  convertirlo a Decimal; no confiar en la coerción de un DecimalField genérico.
+- Validar UUID, observaciones recortadas de hasta 500 y caracteres válidos;
+  no redondear entradas ni aceptar coma/exponente/precisión excesiva.
+- Los errores usan claves planas con el índice ORIGINAL del envío, por ejemplo
+  `detalles.1.cantidad`, aunque el bloqueo y guardado se ordenen por producto.
+- Precio esperado diferente del catálogo: `ConflictoVenta` (409 `conflict`,
+  errors vacío). El precio persistido y los totales se calculan con los valores
+  del servidor. Stock insuficiente y subtotal/total fuera de rango: 400, sin
+  guardar una venta parcial.
+
+Secuencia transaccional:
+
+1. Revalidar permiso actual, normalizar entradas y calcular huella canónica.
+   Consultar una confirmación anterior antes de validar stock/precio/actividad.
+2. Bloquear todas las Existencias por producto_id ascendente y volver a resolver
+   autorización. Consultar de nuevo la clave por si otro intento confirmó
+   mientras se esperaba el bloqueo.
+3. Releer productos/categorías/precios; validar todas las líneas y el total antes
+   de escribir. Calcular con contexto Decimal suficiente y HALF_UP por línea.
+4. En un savepoint, crear encabezado, detalles/snapshots, salidas y vínculos;
+   versiones aumentan una vez por línea. UUID de cada movimiento independiente
+   de la clave de venta y motivo del servidor con venta/detalle. Volver a
+   comprobar autorización antes de confirmar el conjunto: un INSERT también
+   puede esperar por unicidad/FK y permitir cambios de acceso durante la espera.
+5. Un error revierte el conjunto. Solo una colisión identificada de
+   `venta_clave_unica_por_negocio` se concilia tras rollback y nueva autorización.
+   Se cubre tanto UniqueViolation PostgreSQL como la detección previa de
+   `full_clean`; otros errores de persistencia conservan su excepción original.
+
+Misma clave/actor/entrada normalizada devuelve la venta existente sin otra
+escritura; otra entrada/actor produce 409. Las líneas reordenadas o cantidades
+equivalentes son la misma entrada. Una repetición autorizada después de anular
+devuelve la misma venta con su estado/anulación actuales y detalles originales;
+no confirma otra venta. No bloquear la Venta después de sus existencias durante
+la lectura de repetición: la anulación usa el orden Venta → Existencias.
+
+### Componentes comunes disponibles para B7
+
+Desde `ventas.services.common`:
+
+| Componente | Uso |
+|---|---|
+| `ConflictoVenta(detail)` | Conflicto 409 con el envoltorio común existente. |
+| `revalidar_contexto_ventas(contexto, permiso)` | Releer usuario y autorización persistida antes/después de esperas. |
+| `normalizar_uuid(valor)` | UUID interno o string canónico; error en clave_operacion. |
+| `normalizar_texto(valor, campo=..., maximo=..., obligatorio=False)` | Texto recortado, longitud, nul/surrogates y obligatoriedad. |
+| `normalizar_decimal(valor, campo=..., digitos=..., escala=..., positivo=False)` | Decimal exacto con precisión validada antes de normalizar escala. |
+| `es_colision_clave(error, modelo, restriccion)` | Identificar únicamente la unicidad de negocio/clave del modelo indicado. |
+| `huella_anulacion(usuario_id, venta_id, motivo)` | Huella propia de anulación, independiente de registro. |
+| `huella_movimiento_venta(usuario_id, detalle_id, operacion)` | Huella interna para salida/reposición; operacion venta/anulacion. |
+
+B7 implementa su módulo `services/anulacion.py`, no modifica confirmacion.py.
+Sus nuevas claves y su restricción de unicidad se concilian contra
+`AnulacionVenta`; nunca devolver una confirmación para resolver una anulación.
+
+Las pruebas del servicio están en `ventas/tests/test_confirmacion.py`, incluyendo
+conexiones PostgreSQL separadas, orden inverso de carritos, respuesta repetida,
+colisiones de claves entre productos disjuntos y revocación/precio cambiado
+durante espera. No sustituyen las pruebas HTTP de B5/B9 ni el cierre B3.
+
+## 6. URLs y serializers compartidos
 
 La composición monta todos los submódulos bajo el prefijo común de negocio.
 Sus `urlpatterns = []` no publican endpoints ni documentación ficticia.
@@ -154,7 +244,7 @@ orden de sus selectores con una subclase que delegue en
 `PageNumberPagination.paginate_queryset`, como hace el historial de fase 2;
 no perder `-creado_en,-id` de ventas ni el orden cronológico de vínculos.
 
-## 6. Fixtures independientes de endpoints
+## 7. Fixtures independientes de endpoints
 
 ```python
 from decimal import Decimal
@@ -193,13 +283,13 @@ Firmas:
   listar/anular en otra; SKU iguales entre negocios, kg/litro, snapshots y stock
   conciliados. Las cuentas tienen contraseña inutilizable.
 
-Estas fábricas no implementan B2/B7 ni verifican permisos comerciales. Existen
+Estas fábricas no reemplazan los servicios ni verifican permisos comerciales. Existen
 solo en `tests/support`, usan modelos/primitivas y no endpoints de compañeros.
 Para probar autenticación real se prepara una contraseña ficticia expresamente
 y se inicia sesión por API con CSRF. Nunca importar factories en vistas,
 servicios de producción o comandos de operación del negocio.
 
-## 7. Distribución y verificación
+## 8. Distribución y verificación
 
 | Issue | Responsable | Entrega |
 |---|---|---|

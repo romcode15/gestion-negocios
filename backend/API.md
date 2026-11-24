@@ -1,5 +1,19 @@
 # Base de API y seguridad · Issue #5
 
+## Servicio de confirmación · Issue #81
+
+`ventas.services.confirmacion.confirmar_venta(contexto, *, detalles,
+clave_operacion, observaciones="")` registra la venta multilínea, snapshots,
+salidas, versiones y vínculos de manera atómica. Requiere `registrar_venta` y
+conserva idempotencia con clave/actor/entrada normalizada. Un precio diferente
+del esperado o una clave reutilizada para otra solicitud produce 409 `conflict`;
+las validaciones por línea conservan claves planas como `detalles.0.cantidad`.
+
+Este es un servicio interno, sin nueva ruta HTTP en B2. B5 implementará POST
+ventas/ y usará la salida compartida con 201 para creación o repetición. B7
+utilizará las utilidades comunes para su anulación. Firmas, orden de bloqueos,
+pruebas y reglas de integración: [guía backend](fase3.md#5-servicio-de-confirmación--b2-81).
+
 ## Base de ventas · Issue #80
 
 B1 prepara modelos, permisos, [serializers de salida](api/ventas/serializers.py),

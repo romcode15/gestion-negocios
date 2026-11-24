@@ -1,1 +1,1 @@
-"""B2 confirma y B7 anula; los servicios funcionales se implementan en sus issues."""
+"""Confirmación en confirmacion.py (B2); anulación pendiente de B7."""
