@@ -228,6 +228,6 @@ class BaseVentasTests(TestCase):
             self.assertTrue(all(campo.read_only for campo in clase().fields.values()))
 
     def test_base_no_publica_endpoints_de_ventas_antes_de_implementarlos(self):
-        for relativa in ["ventas/", "ventas/1/", "ventas/1/anulacion/", "ventas/1/movimientos/"]:
+        for relativa in ["ventas/", "ventas/1/", "ventas/1/movimientos/"]:
             with self.subTest(ruta=relativa), self.assertRaises(Resolver404):
                 resolve("/api/v1/negocios/1/" + relativa)
