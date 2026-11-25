@@ -50,6 +50,7 @@ class DocumentacionTests(SimpleTestCase):
             "/api/v1/negocios/{negocio_id}/existencias/{producto_id}/",
             "/api/v1/negocios/{negocio_id}/ventas/productos/opciones/",
             "/api/v1/negocios/{negocio_id}/ventas/productos/{producto_id}/",
+            "/api/v1/negocios/{negocio_id}/ventas/{venta_id}/anulacion/",
         })
         components = schema["components"]["schemas"]
         request = components["CrearUsuarioRequest"]["properties"]
@@ -83,6 +84,7 @@ class DocumentacionTests(SimpleTestCase):
 
     def test_contrato_completo_fase2_solicitudes_respuestas_y_opciones(self):
         schema = APIClient().get("/api/schema/?format=json").data
+        paths = schema["paths"]
         components = schema["components"]["schemas"]
         prefix = "/api/v1/negocios/{negocio_id}/"
 
@@ -139,6 +141,20 @@ class DocumentacionTests(SimpleTestCase):
                             self.assertEqual(resolver(body["properties"][campo])["type"], "string")
                     else:
                         self.assertNotIn("requestBody", operation)
+
+        anulacion = paths[prefix + "ventas/{venta_id}/anulacion/"]["post"]
+        self.assertIn({"cookieAuth": []}, anulacion["security"])
+        self.assertEqual(
+            resolver(anulacion["responses"]["200"]["content"]["application/json"]["schema"]),
+            components["VentaDetalle"],
+        )
+        body = resolver(anulacion["requestBody"]["content"]["application/json"]["schema"])
+        self.assertEqual(set(body["properties"]), {"clave_operacion", "motivo"})
+        self.assertEqual(set(body["required"]), {"clave_operacion", "motivo"})
+        self.assertEqual(
+            set(resolver(anulacion["responses"]["409"]["content"]["application/json"]["schema"])["properties"]),
+            {"code", "detail", "errors"},
+        )
 
         for component, campos in {
             "CategoriaOpcion": {"id", "negocio_id", "nombre"},
