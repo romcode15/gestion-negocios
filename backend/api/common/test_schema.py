@@ -51,6 +51,7 @@ class DocumentacionTests(SimpleTestCase):
             "/api/v1/negocios/{negocio_id}/ventas/productos/opciones/",
             "/api/v1/negocios/{negocio_id}/ventas/productos/{producto_id}/",
             "/api/v1/negocios/{negocio_id}/ventas/{venta_id}/anulacion/",
+            "/api/v1/negocios/{negocio_id}/ventas/{venta_id}/movimientos/",
         })
         components = schema["components"]["schemas"]
         request = components["CrearUsuarioRequest"]["properties"]
@@ -154,6 +155,17 @@ class DocumentacionTests(SimpleTestCase):
         self.assertEqual(
             set(resolver(anulacion["responses"]["409"]["content"]["application/json"]["schema"])["properties"]),
             {"code", "detail", "errors"},
+        )
+
+        trazabilidad = paths[prefix + "ventas/{venta_id}/movimientos/"]["get"]
+        self.assertIn({"cookieAuth": []}, trazabilidad["security"])
+        self.assertEqual(
+            resolver(trazabilidad["responses"]["200"]["content"]["application/json"]["schema"]),
+            components["PaginatedMovimientoVentaList"],
+        )
+        self.assertEqual(
+            {parameter["name"] for parameter in trazabilidad["parameters"]},
+            {"negocio_id", "venta_id", "page"},
         )
 
         for component, campos in {

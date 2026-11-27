@@ -1,1 +1,8 @@
-urlpatterns = []  # B8 (#86): <int:venta_id>/movimientos/.
+from django.urls import path
+
+from .views import TrazabilidadVentaView
+
+
+urlpatterns = [
+    path("<int:venta_id>/movimientos/", TrazabilidadVentaView.as_view(), name="venta-movimientos"),
+]
