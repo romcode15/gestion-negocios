@@ -1,5 +1,59 @@
 # Estructura de desarrollo del frontend
 
+## Base de ventas · Fase 3 / F1 (#89)
+
+Base revisada: `dev` en `02fd4ee`, con PR #79 y las bases B1/B2 integradas.
+Fuentes: [contrato común](../fase3.md) y [guía frontend](fase3.md).
+
+```text
+src/features/ventas/
+├── draft/
+│   ├── types.ts                 # Estado local, no DTO de API
+│   ├── state.ts                 # Validación/cambios atómicos del borrador
+│   ├── VentaDraftContext.ts     # Contexto y useVentaDraft
+│   ├── VentaDraftProvider.tsx   # Aislamiento por sesión/negocio y bloqueo
+│   └── index.ts                 # Exportaciones públicas
+├── pages/
+│   ├── NuevaVentaPage.tsx       # Composición de Henry
+│   ├── VentasPage.tsx           # Entrada informativa; Kelvin desde F7
+│   └── index.ts
+└── components/
+    ├── shared/
+    │   ├── contracts.ts         # Props/callbacks de piezas independientes
+    │   ├── erroresLinea.ts      # Errores por snapshot enviado
+    │   └── PiezaVentaPendiente.tsx
+    └── nueva/
+        ├── SelectorProductosVenta.tsx # Stub; Diana/F4 (#91)
+        ├── CarritoVenta.tsx           # Stub; Diana/F5 (#92)
+        └── ConfirmarVenta.tsx         # Stub; Diana/F6 (#93)
+```
+
+Henry mantiene rutas, `draft/`, `components/shared/` y la composición de
+`NuevaVentaPage`. Diana sustituye los tres stubs de `nueva/` manteniendo sus
+exportaciones y props. Kelvin completa `VentasPage` y crea
+`components/consulta/{ListaVentas,DetalleVentaPanel,MovimientosVenta,AnularVentaModal}`
+en F7–F9. No duplicar provider ni importar páginas de otro autor para obtener
+estado. Coordinar cambios a contratos compartidos con Henry.
+
+F2 (#90) añade `ventas/types.ts`, `ventas/api.ts`, cálculos de importes y mock.
+Los tipos actuales de `draft/` describen estado de interfaz, reutilizan campos
+de `Producto` y no representan respuestas nuevas. Los contratos de consulta
+son genéricos para recibir los DTO de F2 cuando existan.
+
+Rutas del router existente:
+
+- `/negocio/nueva-venta`: `registrar_venta`.
+- `/negocio/ventas`: cualquiera de `registrar_venta`, `listar_ventas`, `anular_venta`.
+
+Los placeholders informan qué está pendiente, sin formularios, éxito ficticio
+ni llamadas HTTP. Sin `listar_ventas`, la base indica que el detalle por ID se
+completará en F8. F1 no amplía permisos del mock: F2 incorporará los nuevos
+códigos a sus administradores, conservando roles limitados. La navegación ya
+acepta sesiones autorizadas que contengan los códigos de ventas.
+
+Prueba propia: `npm.cmd run test:ventas-base`, incluida en `npm.cmd test`.
+Contratos y límites: [COMPONENTES.md](COMPONENTES.md).
+
 La fase 1 incorpora tipos compartidos, sesión, selección de negocio, componentes, layouts y pantallas de autenticación, plataforma, roles y membresías. Las llamadas tipadas pueden usar simulación o HTTP sin cambiar las pantallas.
 
 Fuentes obligatorias: [fase 1 frontend](fase1.md), [fase 1 backend](../backend/Fase1.md) y [README del proyecto](../README.md).
