@@ -3,8 +3,9 @@ import type { Negocio } from '../../features/negocios/types'
 import type { Permiso, Rol } from '../../features/roles/types'
 import type { Membresia } from '../../features/membresias/types'
 import { permisosFase2 } from './fase2'
+import { permisosFase3 } from './fase3'
 export const globalCodes = ['listar_negocios', 'crear_negocio', 'listar_usuarios', 'crear_usuario']
-export const businessCodes = ['listar_roles', 'crear_rol', 'listar_membresias', 'crear_membresia', 'asignar_rol', ...permisosFase2]
+export const businessCodes = ['listar_roles', 'crear_rol', 'listar_membresias', 'crear_membresia', 'asignar_rol', ...permisosFase2, ...permisosFase3]
 export function crearDatosIniciales() {
   const usuarios: Usuario[] = ['plataforma', 'admin_tienda', 'admin_ferreteria', 'compartido', 'existente', 'inactivo'].map((username, index) => ({ id: index + 1, username, is_active: username !== 'inactivo' }))
   const negocios: Negocio[] = [
@@ -19,6 +20,8 @@ export function crearDatosIniciales() {
     { id: 3, nombre: 'Administrador de negocio', negocio_id: 2, predefinido: true, permiso_ids: [...businessIds] },
     { id: 4, nombre: 'Consulta', negocio_id: 1, predefinido: false, permiso_ids: [5, 7] },
     { id: 5, nombre: 'Sin permisos', negocio_id: 2, predefinido: false, permiso_ids: [] },
+    ...permisosFase3.map((codigo, index) => ({ id: 6 + index, nombre: 'Solo ' + codigo, negocio_id: 2, predefinido: false,
+      permiso_ids: permisos.filter((p) => p.codigo === codigo).map((p) => p.id) })),
   ]
   const membresias: Membresia[] = [
     { id: 1, usuario: usuarios[1], negocio_id: 1, rol_id: 2, activo: true },

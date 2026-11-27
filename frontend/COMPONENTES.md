@@ -20,7 +20,8 @@ borrador. No usa localStorage, sessionStorage ni una API de borradores.
 `draft` contiene `{ lineas, observaciones }`; cada línea contiene
 `{ producto, cantidad, precio_unitario_esperado }`. El producto local conserva
 ID/negocio/SKU/nombre/unidad/precio/disponible procedentes de una opción
-autorizada. F2 definirá el tipo exacto `VentaProductoOpcion` y sus servicios.
+autorizada. F2 (#90) define `VentaProductoOpcion` y sus servicios; el borrador
+reutiliza ese tipo mediante alias.
 Cantidades, precios y disponibles son cadenas, normalizadas con los helpers
 de fase 2; las sumas de cantidades usan enteros escalados, sin float.
 
@@ -53,6 +54,15 @@ Abortar HTTP no demuestra rollback de un commit. Un éxito usa la respuesta
 canónica de Django; el provider no inventa una VentaDetalle.
 
 ### Props y exportaciones de las piezas
+
+F2 publica `subtotalVenta`/`totalVenta` en `lib/decimales.ts` y
+`crearOperacionVenta`, `crearOperacionAnulacion`, `solicitudDesdeDraft` en
+`features/ventas/draft`. La operación conserva UUID y payload profundamente
+congelado ante retry manual equivalente, incluido reordenamiento de líneas;
+el snapshot original mantiene sus índices para errores. Una entrada diferente
+genera otra clave. Mantener una instancia por formulario/contexto (y por venta
+en anulación), sin POST automático desde efectos. Firmas, ejemplo y pruebas:
+[API.md](API.md#fase-3--contratos-y-simulación-de-ventas-90).
 
 Contratos importables en `features/ventas/components/shared/contracts.ts`:
 

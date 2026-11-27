@@ -235,10 +235,11 @@ try {
   selector.removeChild(ajena)
   await change(selector, '4')
   assert.ok(saldos().some((item) => item.path.endsWith('/negocios/2/existencias/4/')))
+  const versionFerreteria = (await existencias.obtenerExistencia(2, 4)).version
   await change(campo('stock_objetivo'), '4')
   await submit()
   assert.equal(posts()[0].body.producto_id, 4)
-  assert.equal(posts()[0].body.version_esperada, 1)
+  assert.equal(posts()[0].body.version_esperada, versionFerreteria)
   assert.equal((await existencias.obtenerExistencia(2, 4)).cantidad, '4.000')
   console.log('OK F8 tenant: opciones y saldo del negocio activo; producto ajeno sin escritura.')
 

@@ -6,12 +6,11 @@ import type { Producto, ProductoOpcion, ProductoResumen, Unidad } from '../../fe
 import type { Existencia } from '../../features/existencias/types'
 import type { Movimiento } from '../../features/movimientos/types'
 import { aEnteroEscalado, formatearDecimal, normalizarDecimal } from '../../lib/decimales'
-import { crearDatosFase2 } from '../data/fase2'
+import { reiniciarAlmacen, transaccionMock } from './almacen'
 import type { EstadoFase2, MovimientoMock } from '../data/fase2'
 type ProductoMock = EstadoFase2['productos'][number]
 export interface ContextoFase2 { usuario: Usuario; usuarios: Usuario[]; autorizar: (codes: string[], negocioId: number) => void; vacio: boolean }
-let state = crearDatosFase2()
-export function reiniciarFase2() { state = crearDatosFase2() }
+export function reiniciarFase2() { reiniciarAlmacen() }
 function error(code: string, detail: string, status: number, errors: Record<string, string[]> = {}): never { throw new ApiException(code, detail, errors, status) }
 function invalid(field: string, message: string): never { return error('validation_error', 'Revisa los campos indicados.', 400, { [field]: [message] }) }
 function notFound(): never { return error('not_found', 'Recurso no disponible en este contexto.', 404) }
@@ -234,8 +233,8 @@ export function resolverFase2(request: ApiRequest, ctx: ContextoFase2): { handle
   const negocioId = Number(match[1])
   ctx.autorizar([], negocioId)
   // Copia transaccional: ninguna validación fallida altera las colecciones compartidas.
-  const draft = structuredClone(state)
-  const value = run(draft, request, url, negocioId, match[2], match[3], ctx)
-  if (request.method !== 'GET') state = draft
+  const value = transaccionMock(request.method !== 'GET', (draft) => run(draft.inventario, request, url, negocioId, match[2], match[3], ctx))
   return { handled: true, value }
 }
+// Utilidades internas compartidas: mismo paginador, fechas y Movimiento de fase 2.
+export { paginate as paginaMock, validateQuery as validarConsultaMock, timestamp as fechaFiltroMock, movement as movimientoRespuestaMock }

@@ -1,4 +1,5 @@
 export { VentaDraftProvider } from './VentaDraftProvider'
 export { useVentaDraft } from './VentaDraftContext'
 export { MAX_LINEAS_VENTA } from './state'
+export { crearOperacionVenta, crearOperacionAnulacion, solicitudDesdeDraft } from './operaciones'
 export type { ProductoVentaDraft, LineaVentaDraft, VentaDraft, VentaDraftActions, VentaDraftValue } from './types'

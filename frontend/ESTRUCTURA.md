@@ -7,9 +7,12 @@ Fuentes: [contrato común](../fase3.md) y [guía frontend](fase3.md).
 
 ```text
 src/features/ventas/
+├── types.ts                     # DTO exactos de fase 3, Henry/F2
+├── api.ts                       # Siete funciones mock/HTTP, Henry/F2
 ├── draft/
 │   ├── types.ts                 # Estado local, no DTO de API
 │   ├── state.ts                 # Validación/cambios atómicos del borrador
+│   ├── operaciones.ts           # Snapshot/UUID congelados y normalización
 │   ├── VentaDraftContext.ts     # Contexto y useVentaDraft
 │   ├── VentaDraftProvider.tsx   # Aislamiento por sesión/negocio y bloqueo
 │   └── index.ts                 # Exportaciones públicas
@@ -35,10 +38,13 @@ exportaciones y props. Kelvin completa `VentasPage` y crea
 en F7–F9. No duplicar provider ni importar páginas de otro autor para obtener
 estado. Coordinar cambios a contratos compartidos con Henry.
 
-F2 (#90) añade `ventas/types.ts`, `ventas/api.ts`, cálculos de importes y mock.
-Los tipos actuales de `draft/` describen estado de interfaz, reutilizan campos
-de `Producto` y no representan respuestas nuevas. Los contratos de consulta
-son genéricos para recibir los DTO de F2 cuando existan.
+F2 (#90), sobre `dev` en `e572140` con PR #104 integrado, incorpora
+`ventas/types.ts`, `ventas/api.ts`, importes exactos y simulación.
+`ProductoVentaDraft` es un alias de `VentaProductoOpcion`, sin duplicar modelos.
+Los genéricos de consulta reciben VentaResumen/VentaDetalle de F2.
+`mocks/data/fase3.ts` prepara antecedentes y `mocks/services/fase3.ts` resuelve
+ventas sobre `mocks/services/almacen.ts`, también usado por fase 2. Las páginas
+no deben importar esos archivos internos.
 
 Rutas del router existente:
 
@@ -47,11 +53,12 @@ Rutas del router existente:
 
 Los placeholders informan qué está pendiente, sin formularios, éxito ficticio
 ni llamadas HTTP. Sin `listar_ventas`, la base indica que el detalle por ID se
-completará en F8. F1 no amplía permisos del mock: F2 incorporará los nuevos
-códigos a sus administradores, conservando roles limitados. La navegación ya
+completará en F8. F2 amplía los administradores del mock con los tres nuevos
+códigos, conservando roles limitados. La navegación ya
 acepta sesiones autorizadas que contengan los códigos de ventas.
 
 Prueba propia: `npm.cmd run test:ventas-base`, incluida en `npm.cmd test`.
+Contratos y simulación F2: `npm.cmd run test:ventas-api`, también en la suite.
 Contratos y límites: [COMPONENTES.md](COMPONENTES.md).
 
 La fase 1 incorpora tipos compartidos, sesión, selección de negocio, componentes, layouts y pantallas de autenticación, plataforma, roles y membresías. Las llamadas tipadas pueden usar simulación o HTTP sin cambiar las pantallas.

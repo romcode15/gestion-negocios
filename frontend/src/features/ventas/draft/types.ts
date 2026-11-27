@@ -1,9 +1,6 @@
-import type { Producto } from '../../productos/types'
+import type { VentaProductoOpcion } from '../types'
 
-// Estado local de interfaz; F2 define las respuestas de API en ventas/types.ts.
-export type ProductoVentaDraft = Pick<Producto, 'id' | 'negocio_id' | 'sku' | 'nombre' | 'unidad' | 'precio_venta'> & {
-  disponible: string
-}
+export type ProductoVentaDraft = VentaProductoOpcion
 export interface LineaVentaDraft {
   producto: ProductoVentaDraft
   cantidad: string
