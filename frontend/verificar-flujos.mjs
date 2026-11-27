@@ -16,6 +16,13 @@ const server = await createServer({ server: { middlewareMode: true, hmr: false, 
 const root = createRoot(document.getElementById('root'))
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 async function flush() { for (let i = 0; i < 4; i++) await act(async () => { await pause(15) }) }
+async function until(predicate, label) {
+  const deadline = Date.now() + 5000
+  while (!predicate()) {
+    assert.ok(Date.now() < deadline, 'Tiempo agotado: ' + label)
+    await act(async () => { await pause(15) })
+  }
+}
 const field = (container, name) => { const result = container.querySelector('[name="' + name + '"], #' + name); assert.ok(result, 'No existe campo ' + name); return result }
 async function change(container, name, value) {
   const element = field(container, name)
@@ -116,6 +123,8 @@ try {
   await roles.crearRol(1, { nombre: 'Rol integrado de dev', permiso_ids: [5] })
   await go('/negocio/roles')
   assert.match(document.querySelector('table').textContent, /Administrador de negocio/)
+  // El catálogo autorizado recorre varias páginas y puede terminar después de la tabla.
+  await until(() => document.querySelector('table')?.textContent.includes('listar_roles'), 'catálogo de permisos de roles')
   assert.match(document.querySelector('table').textContent, /listar_roles/)
   await click(document.querySelector('[aria-label="Paginación de roles del negocio activo"] button:last-child'))
   assert.match(document.querySelector('table').textContent, /Rol integrado de dev/)

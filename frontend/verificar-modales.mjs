@@ -140,6 +140,8 @@ try {
   console.log('OK FormModal: un formulario, submit/cancelar explícitos, validación visible, busy, envío síncrono y DOM completo con viewport móvil. Layout validado por separado mediante revisión visual documentada.')
 
   const expected = {
+    'nueva-venta': ['registrar_venta'],
+    ventas: ['registrar_venta', 'listar_ventas', 'anular_venta'],
     categorias: ['listar_categorias', 'crear_categoria', 'editar_categoria'],
     productos: ['listar_productos', 'crear_producto', 'editar_producto'],
     existencias: ['consultar_existencias'],
@@ -154,7 +156,7 @@ try {
     for (const codigo of permisos) assert.equal(puedeAcceder(entry, session([codigo]), 1), true)
     assert.equal(puedeAcceder(entry, session([]), 1), false)
     assert.equal(puedeAcceder(entry, session(permisos), 2), false)
-            if (id !== 'categorias' && id !== 'productos' && id !== 'existencias') {
+    if (id === 'movimientos') {
       await render(h(entry.Page))
       assert.match(document.getElementById('root').textContent, /pendiente de implementación/)
     }

@@ -7,7 +7,11 @@ import { CategoriasPage } from '../../features/categorias/pages'
 import { ProductosPage } from '../../features/productos/pages'
 import { ExistenciasPage } from '../../features/existencias/pages'
 import { MovimientosPage } from '../../features/movimientos/pages'
+import { NuevaVentaPage, VentasPage } from '../../features/ventas/pages'
 export const modules: EntradaModulo[] = [
+  { id: 'nueva-venta', label: 'Nueva venta', path: '/negocio/nueva-venta', Page: NuevaVentaPage, ambito: 'negocio', permiso: 'registrar_venta' },
+  { id: 'ventas', label: 'Ventas', path: '/negocio/ventas', Page: VentasPage, ambito: 'negocio', permiso: 'listar_ventas',
+    permisosAlternativos: ['registrar_venta', 'listar_ventas', 'anular_venta'] },
   { id: 'categorias', label: 'Categorías', path: '/negocio/categorias', Page: CategoriasPage, ambito: 'negocio', permiso: 'listar_categorias',
     permisosAlternativos: ['listar_categorias', 'crear_categoria', 'editar_categoria'] },
   { id: 'productos', label: 'Productos', path: '/negocio/productos', Page: ProductosPage, ambito: 'negocio', permiso: 'listar_productos',

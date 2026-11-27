@@ -1,5 +1,107 @@
 # Componentes y estilos compartidos
 
+## Composición de ventas · F1 de fase 3 (#89)
+
+`NuevaVentaPage` compone `SelectorProductosVenta`, `CarritoVenta` y
+`ConfirmarVenta` dentro de `VentaDraftProvider`, sin agregar otro router ni
+modificar los formularios de fases 1/2. Las tres piezas son stubs informativos
+que Diana completará en F4–F6; todavía no consultan, reservan ni confirman ventas.
+`VentasPage` reserva la entrada de Kelvin/F7–F9. El detalle será un panel y
+la anulación un único FormModal, sin diálogos o formularios anidados.
+
+### Borrador compartido
+
+Importar `VentaDraftProvider`, `useVentaDraft` y sus tipos desde
+`features/ventas/draft`. El provider necesita el proveedor de sesión existente,
+cuenta activa, negocio autorizado y `registrar_venta`. Es local al montaje de
+la página: cambiar negocio, revisión de sesión, usuario o ruta descarta el
+borrador. No usa localStorage, sessionStorage ni una API de borradores.
+
+`draft` contiene `{ lineas, observaciones }`; cada línea contiene
+`{ producto, cantidad, precio_unitario_esperado }`. El producto local conserva
+ID/negocio/SKU/nombre/unidad/precio/disponible procedentes de una opción
+autorizada. F2 definirá el tipo exacto `VentaProductoOpcion` y sus servicios.
+Cantidades, precios y disponibles son cadenas, normalizadas con los helpers
+de fase 2; las sumas de cantidades usan enteros escalados, sin float.
+
+| Propiedad o acción | Contrato |
+|---|---|
+| `negocioId`, `draft`, `busy` | Contexto actual, copia del estado y bloqueo compartido |
+| `agregar(producto, cantidad = '1')` | Una fila por ID; repetido suma cantidad; máximo 100 distintos |
+| `cambiarCantidad(id, cantidad)` | Cantidad positiva, rango Decimal(14,3), entera para unidad |
+| `revisarProducto(producto)` | Acción explícita para actualizar opción/precio esperado; no aceptar un precio nuevo al añadir repetido |
+| `quitar(id)`, `vaciar()` | Cambios locales; vaciar también limpia observaciones |
+| `cambiarObservaciones(texto)` | Texto editable hasta 500; el payload posterior lo recorta según contrato |
+| `snapshot()` | Copia profunda independiente; no es un payload HTTP |
+| `iniciarEnvio()` | Bloqueo síncrono y snapshot; rechaza carrito vacío y segundo envío |
+| `terminarEnvio(false)` | Libera bloqueo conservando datos ante validación, red o conflicto |
+| `terminarEnvio(true)` | Solo tras éxito canónico: limpia y libera una vez; una llamada duplicada sin envío es inocua |
+
+Las acciones validan antes de publicar cambios. IDs ajenos, cantidades inválidas,
+exceso de líneas o errores no dejan cambios parciales. Disponible cero sigue
+siendo informativo: el borrador no reserva stock y Django valida saldo/precio.
+Mientras `busy`, se rechaza editar/agregar/quitar/vaciar; la composición transmite
+el bloqueo al selector, carrito y confirmación. Referencias/callbacks del contexto
+anterior rechazan con AbortError incluso si la respuesta llegó tarde.
+
+F6 mantiene el payload y UUID del envío incierto mediante los helpers de F2,
+con bloqueo local síncrono además de `busy`. No reintenta POST desde efectos.
+Al capturar errores debe conservar el snapshot enviado para mapear líneas;
+un 409 exige revisión explícita, sin actualizar precio ni reenviar automáticamente.
+Antes de aplicar resultados usar `store.enContexto` y cancelar al desmontar.
+Abortar HTTP no demuestra rollback de un commit. Un éxito usa la respuesta
+canónica de Django; el provider no inventa una VentaDetalle.
+
+### Props y exportaciones de las piezas
+
+Contratos importables en `features/ventas/components/shared/contracts.ts`:
+
+| Pieza | Props/callbacks | Responsable |
+|---|---|---|
+| `SelectorProductosVenta` | `onAgregar`, `busy?` | Diana/F4 |
+| `CarritoVenta` | `draft`, `onCambiarCantidad`, `onQuitar`, `onVaciar`, `busy?`, `error?`, `snapshotEnviado?` | Diana/F5 |
+| `ConfirmarVenta` | `draft`, `busy`, `onCambiarObservaciones`, `onRevisarProducto`, `onIniciarEnvio`, `onTerminarEnvio` | Diana/F6 |
+| `ListaVentasProps<Resumen>` | `seleccionadoId`, `refreshKey`, `onSeleccionar(venta)` | Kelvin/F7 |
+| `DetalleVentaPanelProps<Detalle>` | `ventaId`, `refreshKey`, `onCargada(venta|null)`, `onSolicitarAnulacion(venta)` | Kelvin/F8 |
+| `AnularVentaModalProps<Detalle>` | `venta`, `onClose`, `onAnulada(venta)` | Kelvin/F9 |
+
+Los genéricos de consulta se concretan con `VentaResumen`/`VentaDetalle` de F2,
+sin duplicar sus modelos. Kelvin mantiene selección y refrescos locales, solo
+consulta el listado con `listar_ventas` y permite detalle por ID con cualquiera
+de los tres permisos. Abrir anulación exige `anular_venta` y venta confirmada;
+su formulario mantiene pending, cancelación, foco y errores mediante FormModal.
+
+`erroresLineaVenta(errors, snapshotEnviado, productoId)` traduce
+`detalles.N.campo` a errores de una fila según el orden enviado, aunque la vista
+esté reordenada. Los errores generales `detalles` siguen en ApiFeedback.
+Ejemplo: `erroresLineaVenta(error.errors, enviado, linea.producto.id).cantidad`.
+
+Reutilizar TextField/SelectField y etiquetas visibles; enfocar el primer campo
+inválido. Modal conserva foco/Tab/Shift+Tab, cierre Escape/fondo solo sin busy,
+restauración de foco y scroll, y contenido desplazable en móvil. No contiene
+lógica de venta, importes, endpoints o inventario. F1 no añade métodos a la API,
+modifica OpenAPI ni desactiva CSRF: todavía no realiza escrituras.
+
+### Verificación de la base
+
+`verificar-ventas-base.mjs`, incluido en `npm.cmd test`, comprueba límites,
+decimales/unidad, duplicados, conservación de precios, snapshots/errores por
+línea, bloqueo síncrono, éxito/error, aislamiento por negocio/sesión, inactivos,
+solicitud tardía, rutas con permisos mínimos/alternativos y ausencia de llamadas
+HTTP de los placeholders. Un consumidor de prueba usa FormModal para verificar
+foco, Tab/Escape/busy y desmontaje; no se presenta como confirmación funcional.
+`verificar-modales.mjs` incluye los permisos nuevos y conserva las regresiones.
+Las pruebas DOM no sustituyen revisión visual ni integración de ventas; F3 (#97)
+validará HTTP/PostgreSQL y navegador tras los módulos correspondientes.
+
+Resultados del 24/11/2026: `npm.cmd run test:ventas-base`,
+`npm.cmd run test:modales`, `npm.cmd run lint`, `npm.cmd run build` y
+`npm.cmd test`: correctos. La suite completa conserva regresiones de fases 1/2.
+Se corrigió una espera fija en `verificar-flujos.mjs`: ahora espera el catálogo
+de permisos paginado antes de comprobar sus nombres, sin retirar la validación.
+No se ejecutó integración HTTP/PostgreSQL de ventas ni revisión visual nueva:
+esta entrega es la base de composición, no los módulos F2/F4–F9.
+
 Las pantallas de #14 y #15 usan los mismos componentes desde src/components/ui:
 
 | Componente | Interfaz y uso |

@@ -1,5 +1,7 @@
-type IconName = 'home' | 'negocios' | 'roles' | 'membresias' | 'logout' | 'categorias' | 'productos' | 'existencias' | 'movimientos'
+type IconName = 'home' | 'negocios' | 'roles' | 'membresias' | 'logout' | 'categorias' | 'productos' | 'existencias' | 'movimientos' | 'nueva-venta' | 'ventas'
 const paths: Record<IconName, string> = {
+  'nueva-venta': 'M3 3h2l3 12h10l3-8H6m3 12h.01M18 19h.01M12 3v6m-3-3h6',
+  ventas: 'M6 3h12v18l-3-2-3 2-3-2-3 2Zm3 4h6m-6 4h6m-6 4h4',
   categorias: 'M3 3h7v7H3Zm11 0h7v7h-7ZM3 14h7v7H3Zm11 0h7v7h-7Z',
   productos: 'm3 7 9-4 9 4v10l-9 4-9-4Zm0 0 9 4 9-4m-9 4v10M7 5l10 4',
   existencias: 'M3 3h18v5H3Zm2 5v13h14V8m-10 4h6',
