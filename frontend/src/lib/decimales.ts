@@ -19,3 +19,16 @@ export function formatearDecimal(value: bigint, escala = 3): string {
   return (negative ? '-' : '') + (escala ? digits.slice(0, -escala) + '.' + digits.slice(-escala) : digits)
 }
 export function normalizarDecimal(value: unknown, options: OpcionesDecimal): string { return formatearDecimal(aEnteroEscalado(value, options), options.escala) }
+
+// HALF_UP una vez por línea. La suma usa subtotales ya redondeados.
+export function subtotalVenta(cantidad: string, precioUnitario: string, unidad?: OpcionesDecimal['unidad']): string {
+  const quantity = aEnteroEscalado(cantidad, { escala: 3, precision: 14, campo: 'cantidad', unidad })
+  if (quantity <= 0n) throw new ApiException('validation_error', 'La cantidad debe ser positiva.', { cantidad: ['Usa una cantidad positiva.'] }, 400)
+  const price = aEnteroEscalado(precioUnitario, { escala: 2, precision: 12, campo: 'precio_unitario_esperado' })
+  const result = formatearDecimal((quantity * price + 500n) / 1000n, 2)
+  return normalizarDecimal(result, { escala: 2, precision: 14, campo: 'subtotal' })
+}
+export function totalVenta(subtotales: readonly string[]): string {
+  const sum = subtotales.reduce((total, value) => total + aEnteroEscalado(value, { escala: 2, precision: 14, campo: 'total' }), 0n)
+  return normalizarDecimal(formatearDecimal(sum, 2), { escala: 2, precision: 14, campo: 'total' })
+}

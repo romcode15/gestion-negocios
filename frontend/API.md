@@ -327,3 +327,144 @@ El comando muestra una URL temporal y la cuenta de revisión después de aprobar
 las pruebas. Abrir esa URL, usar el valor privado de la variable y revisar los
 modales. Pulsar Enter en la terminal al terminar elimina la base temporal.
 No usar credenciales de producción para esta variable ni para estas pruebas.
+
+## Fase 3 · Contratos y simulación de ventas (#90)
+
+Base: `dev` en `e572140`, con F1 (#89) integrada por PR #104. Fuentes:
+[contrato común](../fase3.md) y [guía frontend](fase3.md). Los tipos únicos
+están en `features/ventas/types.ts` y las funciones en `features/ventas/api.ts`.
+`ProductoVentaDraft` reutiliza `VentaProductoOpcion`; no hay otro modelo para
+el carrito. IDs/versiones son números; cantidades, precios e importes son
+cadenas. VentaDetalle conserva snapshots originales al cambiar catálogo/anular.
+
+### Funciones públicas
+
+Prefijo `/api/v1/negocios/{negocioId}/ventas`. Las opciones admiten `signal?`;
+las listas añaden `page?` y filtros declarados. Se usa el cliente central mock/http.
+
+| Función | Método/ruta | Respuesta y permiso |
+|---|---|---|
+| `listarProductosVentaOpciones(negocioId, opciones?)` | GET `/productos/opciones/` | Pagina<VentaProductoOpcion>; registrar_venta; search/page |
+| `obtenerProductoVenta(negocioId, productoId, opciones?)` | GET `/productos/{id}/` | VentaProductoOpcion; registrar_venta |
+| `registrarVenta(negocioId, input, opciones?)` | POST `/` | 201 VentaDetalle; registrar_venta |
+| `listarVentas(negocioId, opciones?)` | GET `/` | Pagina<VentaResumen>; listar_ventas; search/estado/desde/hasta/page |
+| `obtenerVenta(negocioId, ventaId, opciones?)` | GET `/{id}/` | VentaDetalle; cualquiera de los tres permisos |
+| `anularVenta(negocioId, ventaId, input, opciones?)` | POST `/{id}/anulacion/` | 200 VentaDetalle; anular_venta |
+| `listarMovimientosVenta(negocioId, ventaId, opciones?)` | GET `/{id}/movimientos/` | Pagina<MovimientoVenta>; cualquiera de los tres permisos; solo page |
+
+Las opciones no exigen permisos de catálogo/existencias/listar ventas. Incluyen
+stock cero y excluyen producto/categoría inactivos; detalle de opción
+inactivo/ajeno/inexistente da 404. La búsqueda de opciones por nombre/SKU se
+resuelve antes de paginar. Ventas: fecha/ID descendentes; detalles: ID;
+vínculos: fecha/ID de movimiento ascendentes. Páginas de 2, enlaces mock con
+filtros conservados; incrementar page con la función tipada, no seguir URLs mock.
+
+Filtros mediante URLSearchParams: desde inclusivo, hasta exclusivo, con zona
+horaria y desde < hasta. Parámetros desconocidos/repetidos o inválidos dan 400;
+page inválida/fuera de rango da 404. No hay PATCH/DELETE de ventas: 405 común.
+Registro/anulación tienen inputs separados y estrictos, también dentro de
+líneas. No enviar actor, tenant, stock, total, subtotal, estado ni auditoría.
+Errores planos `detalles.N.producto_id`, `detalles.N.cantidad`,
+`detalles.N.precio_unitario_esperado` se mapean según el snapshot enviado con
+`erroresLineaVenta`. Un 409 usa `conflict` y `errors: {}`.
+
+### Importes y reintentos manuales
+
+`lib/decimales.ts` añade `subtotalVenta(cantidad, precioUnitario, unidad?)`
+y `totalVenta(subtotales)`. Usan enteros escalados: HALF_UP una vez por línea,
+suma de subtotales ya redondeados y límites Decimal(14,3), Decimal(12,2) y
+Decimal(14,2). Precio/total cero son válidos. No hay float ni bigint en respuestas.
+El cálculo frontend es informativo; el importe definitivo procede del servidor.
+
+`features/ventas/draft` publica `solicitudDesdeDraft`, `crearOperacionVenta` y
+`crearOperacionAnulacion`. Conservar una instancia por formulario/contexto y,
+para anular, por venta seleccionada; descartarla al cambiar negocio/sesión.
+
+```ts
+import { crearOperacionVenta } from './features/ventas/draft'
+import { registrarVenta } from './features/ventas/api'
+
+// Conservar la instancia, por ejemplo mediante useRef dentro del formulario.
+const operacion = crearOperacionVenta()
+const payload = operacion.preparar({
+  observaciones: '',
+  detalles: [{ producto_id: 1, cantidad: '1.000', precio_unitario_esperado: '12.50' }],
+})
+const venta = await registrarVenta(1, payload)
+// Mostrar ID/estado/total canónicos; limpiar el borrador solo tras éxito.
+operacion.nueva()
+```
+
+`preparar` valida/normaliza, genera UUID y congela profundamente el payload.
+Entrada equivalente (cantidades/precios normalizados, textos recortados, líneas
+reordenadas) conserva UUID y snapshot ORIGINAL, incluido su orden para errores.
+Cambiar carrito/precio esperado/observaciones/motivo genera otra operación;
+`nueva()` descarta la anterior. Para el carrito:
+`preparar(solicitudDesdeDraft(provider.snapshot()))`. Para anular, conservar
+`crearOperacionAnulacion()` y llamar `preparar({ motivo })`.
+
+Ante red/CSRF conservar instancia/payload y permitir retry manual idéntico; no
+repetir POST automáticamente. Un 409 requiere revisión explícita, sin aceptar
+precios ni confirmar de nuevo automáticamente. Misma clave con otro actor o
+contenido da conflicto. El registro reintentado tras anular devuelve la misma
+venta actualizada, sin otra salida. Registro/anulación tienen espacios de
+claves separados, únicos por negocio; cada reintento exige autorización actual.
+
+### Inventario compartido y semilla
+
+`mocks/services/almacen.ts` mantiene un único estado de inventario y ventas.
+Fases 2/3 operan sobre copias síncronas que se publican completas solo tras
+éxito. Precio, stock, segunda línea, importe o excepción fallidos no dejan
+encabezados, líneas, vínculos, movimientos ni saldos parciales. No se llama al
+endpoint manual ni se conceden permisos de movimientos para vender/anular.
+
+Cada línea confirmada genera salida, UUID interno independiente, vínculo y
+aumento de versión. Anular crea entradas compensatorias conservando importes,
+snapshots y auditoría, incluso con producto/categoría posteriormente inactivos.
+Desbordamiento en una línea revierte toda la anulación. No hay segunda anulación
+con otra clave. Consultas posteriores de fase 2 ven los mismos saldos/movimientos.
+
+La semilla conserva las seis cuentas ficticias y los dos negocios anteriores:
+
+- Tienda mantiene catálogo/saldos originales y comienza sin ventas.
+- Ferretería tiene una venta confirmada y otra anulada con vínculos. El producto
+  homónimo conserva saldo `3.500`, con cinco movimientos históricos y versión 5
+  conciliados desde cero.
+- Ferretería incluye roles nuevos `Solo registrar_venta`, `Solo listar_ventas`
+  y `Solo anular_venta`, sin asignación automática. Incorporar cuentas de prueba
+  mediante membresías para reproducir cada permiso mínimo.
+- Administradores predefinidos tienen 19 permisos de negocio, también en negocios
+  nuevos. Roles limitados anteriores y plataforma conservan sus permisos.
+- La cuenta inactiva anterior sigue deshabilitada. No se persisten ventas,
+  contraseñas o carritos en el navegador.
+
+`reiniciarMocks()` restablece identidad/inventario/ventas juntos. Se conservan
+escenarios empty/conflict/csrf_failed y cancelación; abortar después de un commit
+no acredita rollback. La simulación serializa en JavaScript y compara contenido
+canónico; no prueba bloqueos PostgreSQL ni el hash/servicio real de Django.
+
+### Verificación de F2
+
+```powershell
+npm.cmd run test:ventas-api
+npm.cmd run lint
+npm.cmd run build
+npm.cmd test
+```
+
+`verificar-ventas-api.mjs` comprueba mock y HTTP con fetch sustituido: siete rutas,
+query strings, payloads, cookies/CSRF/204, señales y errores 400/403/404/409 sin
+retry automático. Incluye HALF_UP/límites, reintentos reordenados, actor/tenant,
+permiso mínimo/denegado/revocado, precio cambiado, inactivos, segunda línea
+inválida, excepción tras primer delta y reversión fuera de rango. Compara saldo,
+versión, historial, ventas y vínculos antes/después de errores. La suite incluye
+regresiones de fases 1/2 y de la base #89.
+
+Esta entrega no implementa pantallas F4–F9 ni modifica OpenAPI/backend. La
+integración HTTP real y revisión visual de ventas corresponden a F3 (#97)
+después de sus dependencias; mock/fetch sustituido no acreditan PostgreSQL real.
+
+Resultado del 26/11/2026: `npm.cmd run test:ventas-api`, `npm.cmd run lint`,
+`npm.cmd run build` y `npm.cmd test`, correctos. Las regresiones consultan el
+catálogo de permisos y la versión real de la semilla, sin fijar los antiguos
+16 permisos o versión 1 de Ferretería. No se retiraron pruebas de acceso denegado.

@@ -5,6 +5,7 @@ import type { Usuario } from '../../features/usuarios/types'
 import type { Pagina } from '../../api/types'
 import { crearDatosIniciales, globalCodes } from '../data/seed'
 import { reiniciarFase2, resolverFase2 } from './fase2'
+import { resolverFase3 } from './fase3'
 
 type Scenario = 'normal' | 'empty' | 'validation_error' | 'invalid_credentials' | 'not_authenticated' | 'permission_denied' | 'csrf_failed' | 'not_found' | 'conflict'
 export const TAMANO_PAGINA = 2
@@ -138,6 +139,14 @@ function dispatch({ method, path, body }: ApiRequest): unknown {
   if (route === '/auth/me/' && method === 'GET') return session()
   if (route === '/auth/logout/' && method === 'POST') { account(); userId = null; rememberIdentity(null); return undefined }
   account()
+  const fase3 = resolverFase3({ method, path, body }, {
+    usuario: account(), usuarios: data.usuarios, vacio: currentScenario === 'empty',
+    autorizar(codes, negocioId) {
+      const business = session().negocios.find((n) => n.id === negocioId)
+      if (!business || (codes.length > 0 && !codes.some((code) => business.permisos.includes(code)))) fail('permission_denied', 'No tienes permiso para realizar esta acción.', 403)
+    },
+  })
+  if (fase3.handled) return fase3.value
   const fase2 = resolverFase2({ method, path, body }, {
     usuario: account(), usuarios: data.usuarios, vacio: currentScenario === 'empty',
     autorizar(codes, negocioId) {

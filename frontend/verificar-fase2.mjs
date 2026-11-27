@@ -59,7 +59,8 @@ try {
 
   await reset()
   await rejects(() => login('inactivo'), 'invalid_credentials')
-  assert.equal((await auth.obtenerSesion()).negocios[0].permisos.length, 16)
+  const catalogoInicial = await all((q) => roles.listarPermisos(1, q))
+  assert.deepEqual((await auth.obtenerSesion()).negocios[0].permisos.sort(), catalogoInicial.map((p) => p.codigo).sort())
   assert.equal((await cat.listarCategorias(1)).count, 3)
   const page = await cat.listarCategorias(1, { search: 'a' })
   assert.match(page.next, /^mock:/)
@@ -167,7 +168,7 @@ try {
   await reset()
   const allPermissions = await all((q) => roles.listarPermisos(1, q))
   const idByCode = new Map(allPermissions.map((p) => [p.codigo, p.id]))
-  assert.equal(allPermissions.length, 16)
+  assert.deepEqual(allPermissions.map((p) => p.codigo).sort(), catalogoInicial.map((p) => p.codigo).sort())
   async function limited(username, codes) {
     const role = await roles.crearRol(1, { nombre: username, permiso_ids: codes.map((code) => { assert.ok(idByCode.has(code)); return idByCode.get(code) }) })
     await members.crearMembresia(1, { username, password: 'Demo-12345!', rol_id: role.id })
@@ -214,7 +215,7 @@ try {
   await rejects(() => cat.listarCategorias(1), 'permission_denied')
   const newBusiness = await business.crearNegocio({ nombre: 'Nueva', tipo: 'tienda', administrador_id: 5 })
   await login('existente')
-  assert.equal((await auth.obtenerSesion()).negocios[0].permisos.length, 16)
+  assert.deepEqual((await auth.obtenerSesion()).negocios[0].permisos.sort(), catalogoInicial.map((p) => p.codigo).sort())
   assert.equal((await cat.listarCategorias(newBusiness.id)).count, 0)
   await login('admin_ferreteria')
   assert.equal((await prod.listarProductos(2)).results[0].sku, 'COMUN-01')
