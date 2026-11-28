@@ -48,6 +48,7 @@ class DocumentacionTests(SimpleTestCase):
             "/api/v1/negocios/{negocio_id}/productos/opciones/",
             "/api/v1/negocios/{negocio_id}/existencias/",
             "/api/v1/negocios/{negocio_id}/existencias/{producto_id}/",
+            "/api/v1/negocios/{negocio_id}/ventas/",
             "/api/v1/negocios/{negocio_id}/ventas/productos/opciones/",
             "/api/v1/negocios/{negocio_id}/ventas/productos/{producto_id}/",
             "/api/v1/negocios/{negocio_id}/ventas/{venta_id}/anulacion/",
