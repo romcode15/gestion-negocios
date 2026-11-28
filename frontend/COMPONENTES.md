@@ -76,10 +76,17 @@ Contratos importables en `features/ventas/components/shared/contracts.ts`:
 | `AnularVentaModalProps<Detalle>` | `venta`, `onClose`, `onAnulada(venta)` | Kelvin/F9 |
 
 Los genéricos de consulta se concretan con `VentaResumen`/`VentaDetalle` de F2,
-sin duplicar sus modelos. Kelvin mantiene selección y refrescos locales, solo
-consulta el listado con `listar_ventas` y permite detalle por ID con cualquiera
-de los tres permisos. Abrir anulación exige `anular_venta` y venta confirmada;
-su formulario mantiene pending, cancelación, foco y errores mediante FormModal.
+sin duplicar sus modelos. F7 ya monta `ListaVentas` en `VentasPage`: muestra
+solo ID, fecha, vendedor, estado y total; envía `search/estado/desde/hasta/page`
+a `listarVentas` con el negocio activo y conserva los filtros al refrescar o al
+recuperar una página fuera de rango. `desde` es ISO 8601 con zona al inicio del
+día y `hasta` el inicio del día siguiente (exclusivo). Sin `listar_ventas` no se
+monta tabla ni se consulta el listado: con `registrar_venta` o `anular_venta` se
+ofrece apertura por ID entero positivo y seguro (F8). Kelvin mantiene selección
+y `refreshKey` locales; F8 montará el panel con `ventaId`/`refreshKey` y F9
+usará `onAnulada` para incrementar ese refresco sin borrar filtros. Abrir
+anulación exige `anular_venta` y venta confirmada; su formulario mantiene
+pending, cancelación, foco y errores mediante FormModal.
 
 `erroresLineaVenta(errors, snapshotEnviado, productoId)` traduce
 `detalles.N.campo` a errores de una fila según el orden enviado, aunque la vista
@@ -101,12 +108,18 @@ solicitud tardía, rutas con permisos mínimos/alternativos y ausencia de llamad
 HTTP de los placeholders. Un consumidor de prueba usa FormModal para verificar
 foco, Tab/Escape/busy y desmontaje; no se presenta como confirmación funcional.
 `verificar-modales.mjs` incluye los permisos nuevos y conserva las regresiones.
-Las pruebas DOM no sustituyen revisión visual ni integración de ventas; F3 (#97)
-validará HTTP/PostgreSQL y navegador tras los módulos correspondientes.
+`verificar-ventas-listado.mjs`, incluido en la suite común, comprueba columnas,
+ambos estados, importes/fechas legibles, búsqueda por observaciones/nombre/SKU,
+filtros con zona y rango exclusivo, paginación, vacío, error/reintento,
+recuperación de página sin perder filtros, apertura por ID seguro, permiso
+aislado, tenant ajeno, inactivos y descarte de respuestas tardías. Las pruebas
+DOM no sustituyen revisión visual ni integración de ventas; F3 (#97) validará
+HTTP/PostgreSQL y navegador tras los módulos correspondientes.
 
-Resultados del 24/11/2026: `npm.cmd run test:ventas-base`,
-`npm.cmd run test:modales`, `npm.cmd run lint`, `npm.cmd run build` y
-`npm.cmd test`: correctos. La suite completa conserva regresiones de fases 1/2.
+Resultados del 27/11/2026: `npm.cmd run lint`, `npm.cmd run build`,
+`npm.cmd run test:ventas-base`, `npm.cmd run test:ventas-api`,
+`npm.cmd run test:ventas-listado` y `npm.cmd test`: correctos. La suite completa
+conserva regresiones de fases 1/2.
 Se corrigió una espera fija en `verificar-flujos.mjs`: ahora espera el catálogo
 de permisos paginado antes de comprobar sus nombres, sin retirar la validación.
 No se ejecutó integración HTTP/PostgreSQL de ventas ni revisión visual nueva:
