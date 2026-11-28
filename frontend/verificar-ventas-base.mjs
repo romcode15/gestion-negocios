@@ -212,10 +212,22 @@ try {
       session = fixture([code])
       await act(async () => { await store.restaurar(); navegar(entry.path) })
       await render(h(Harness, null, h(AppRoutes)))
-      assert.match(document.querySelector('#root').textContent, /Pendiente de implementación/)
-      assert.equal(document.querySelectorAll('form').length, 0)
+      const texto = document.querySelector('#root').textContent
+      // F7 sustituye el placeholder del listado por filtros y consulta real;
+      // F8/F9 siguen pendientes y no abren diálogos por sí solos.
+      assert.match(texto, /Pendiente de implementación/)
       assert.equal(document.querySelector('[role="dialog"]'), null)
-      if (code !== 'listar_ventas') assert.equal(document.querySelector('table'), null)
+      if (id === 'nueva-venta') {
+        assert.equal(document.querySelectorAll('form').length, 0)
+        assert.equal(document.querySelector('table'), null)
+      } else if (code === 'listar_ventas') {
+        assert.ok(document.querySelector('form[aria-label="Filtrar ventas"]'))
+        assert.match(texto, /Listado de ventas/)
+      } else {
+        assert.ok(document.querySelector('form[aria-label="Abrir venta por ID"]'))
+        assert.equal(document.querySelector('form[aria-label="Filtrar ventas"]'), null)
+        assert.equal(document.querySelector('table'), null)
+      }
     }
     assert.equal(puedeAcceder(entry, fixture([]), 1), false)
     session = fixture([])
